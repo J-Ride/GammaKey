@@ -1,0 +1,10 @@
+# Workspace override for bmad-create-story.
+# Born from the LUX-OS Epic 1 retrospective (2026-07-16), action item 1:
+# Jordan is the human gate and needs a plain-English recap, not just engineer-facing artifacts.
+# Amended 2026-07-22 (Story 2.9 lessons): validation is mandatory, not optional.
+
+[workflow]
+persistent_facts = [
+  "MANDATORY VALIDATION (LUX-OS policy 2026-07-22): story validation is NOT optional. Every story file this skill produces must be validated before it can be marked ready-for-dev.",
+]
+on_complete = "MANDATORY before anything else: run the validate-create-story quality check on the just-created story file. Replace the template's 'Validation is optional' comment with a '## Validation Record' entry (date, checks run, findings, resolution). Fix story-file findings before proceeding; a finding that changes scope or acceptance criteria goes to Jordan, not past him. Only after the validation record is written: give Jordan a brief plain-English preview of what the prepared story will build, written for someone with no software background: one short paragraph, no jargon, no file paths, no acronyms. Explain what will exist after the story that does not exist now, and why it matters for the business. No em dashes, no hype words, no exclamation points. Label it 'In plain terms:'."

@@ -1,0 +1,22 @@
+﻿# Per-machine, never shared
+CLAUDE.local.md
+
+# Build artifacts / envs (local only, rebuilt per machine)
+node_modules/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+dist/
+build/
+
+# Secrets
+.env
+.env.*
+
+# Graphify derived index
+graphify-out/
+
+# Test / coverage
+.pytest_cache/
+coverage/

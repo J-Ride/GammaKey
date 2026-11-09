@@ -1,0 +1,20 @@
+# Workspace override for bmad-dev-story (project-agnostic).
+# Two concerns live here, deliberately together (merged 2026-08-11 from the July operator rules
+# + the August ponytail fence -- persistent_facts is a list, they compose):
+# 1. The ponytail fence: the always-on "lazy senior dev" plugin never costs accuracy or a required
+#    guarantee. BMad's sanctioned customization hook, NOT an edit to the shared bmad-dev-story skill.
+#    Generic fence auto-loads from <workspace>\.claude\rules\ponytail-fence.md; a project may add
+#    <repo>\.claude\rules\ponytail-fence.md (refines, never loosens).
+# 2. The operator rules: validation hard gate, plain-English conversation layer, deferred-work
+#    watchdog. These mirror what the autonomous path (bmad-run-story) already enforces, so
+#    interactive dev-story sessions carry the same guarantees.
+
+[workflow]
+persistent_facts = [
+  "PONYTAIL FENCE: the ponytail 'lazy senior dev' plugin is always-on and welcome for leaner first-draft code, but it is FENCED. It governs HOW a story is built, never WHETHER a required primitive exists. It may NOT remove structure required by this project's architecture, ADRs, spec, project-context.md, or a story's acceptance criteria, and may NOT drop input validation, error handling, or correctness at a trust boundary even when no rule names it explicitly. On any conflict the spec and the accuracy gates win; ponytail yields. Accuracy gates are unchanged: test-first (TDD) and the adversarial correctness/security/edge-case review stay in force as the real backstop. Consult the workspace fence <workspace>/.claude/rules/ponytail-fence.md and this project's own <repo>/.claude/rules/ponytail-fence.md if present.",
+  "PONYTAIL TIER: run ponytail advisory/lite on Tier-1 stories (anything touching auth, access/permission, money/billing/spend, persistence, migrations/schema/db, audit, secrets/credentials, PII, a security boundary, any external/irreversible write, or a project-specific Tier-1 signal) — surface a structural or validation simplification for a human, never auto-apply it. Run full on Tier-2 (UI/tokens/read-models/dashboards/admin/internal tooling). Never ultra.",
+  "HARD GATE: do not begin implementation on a story file that lacks a '## Validation Record' section (or equivalent validation evidence). Validation is mandatory; the template's 'Validation is optional' note is overridden. If the record is missing, HALT and tell the user the story needs validation first.",
+  "HARD RULE - how to talk to the user (policy 2026-07-22): he is not a software engineer. Every explanation, question, issue, or decision presented to him in conversation must be brief plain English: no jargon, no acronyms, no file paths or code identifiers unless he asks for them. If a technical term is unavoidable, define it in the same sentence in everyday words.",
+  "HARD RULE - decision format for the user: when a HALT, issue, or decision needs his input, present it as (1) WHAT the problem is in one or two plain sentences, (2) each option on its own line as: name - what it is, why you would pick it, what it costs or risks, (3) end with 'My recommendation:' and one sentence of why. This governs the conversation only; story files, code, and records stay fully technical.",
+]
+on_complete = "Before exiting, give the user a brief plain-English recap of what was just built, written for someone with no software background: one short paragraph, no jargon, no file paths, no acronyms. Explain what the thing does, why it matters for the business, and what he can now rely on. No em dashes, no hype words, no exclamation points. Label it 'In plain terms:'. THEN run the deferred-work watchdog: read {project-root}/_bmad-output/implementation-artifacts/deferred-work.md and cross-check it against sprint-status.yaml. If any open entry names a revisit trigger (a story or epic) that is already done, or the count of open entries exceeds 25, print a prominent 'DEFERRED-WORK ALERT:' block ABOVE the recap listing each overdue entry in one line. If neither condition holds, say nothing about deferred work."
