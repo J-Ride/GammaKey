@@ -14,10 +14,6 @@ public sealed class MainForm : Form
     private readonly TextBox _nameBox = new() { Width = WideInputWidth };
     private readonly HotkeyCaptureBox _hotkeyBox = new() { Width = WideInputWidth };
     private readonly ComboBox _targetBox = new() { Width = WideInputWidth, DropDownStyle = ComboBoxStyle.DropDownList };
-    private readonly HotkeyCaptureBox _resetHotkeyBox = new() { Width = 260 };
-    private readonly CheckBox _startWithWindows = new() { Text = "Start with Windows", AutoSize = true };
-    private readonly CheckBox _showToast = new() { Text = "Show profile name on hotkey", AutoSize = true };
-    private readonly CheckBox _guard = new() { Text = "Re-apply if Windows resets the curve", AutoSize = true };
     private readonly Label _status = new() { AutoSize = true, ForeColor = Theme.Warning, MaximumSize = new Size(420, 0), Margin = new Padding(Theme.LabelColumnWidth, Theme.Space1, 0, 0) };
     private readonly Label _vibranceNote = new() { AutoSize = true, ForeColor = Theme.TextMuted, Font = Theme.Caption, Margin = new Padding(Theme.LabelColumnWidth, 0, 0, Theme.Space1) };
 
@@ -47,14 +43,12 @@ public sealed class MainForm : Form
         _controller.SettingsChanged += () =>
         {
             if (IsDisposed) return;
-            LoadSettingsIntoControls();
             RefreshProfileList(keepSelection: true);
         };
 
         BuildLayout();
         Theme.Apply(this);
         LoadMonitorsIntoTarget();
-        LoadSettingsIntoControls();
         RefreshProfileList();
         if (_profileList.Items.Count > 0)
         {
@@ -82,8 +76,7 @@ public sealed class MainForm : Form
         root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         Controls.Add(root);
 
-        // Left: profile list, its buttons, then app settings. Settings sit here because the
-        // editor column fills the 640 px window height on its own.
+        // Left: profile list, its buttons, then the Settings button. App settings live in a dialog.
         var left = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, Margin = Padding.Empty };
         left.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         left.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
@@ -102,16 +95,12 @@ public sealed class MainForm : Form
             leftButtons.Controls.Add(button, i, 0);
         }
         left.Controls.Add(leftButtons);
-        left.Controls.Add(new Label { Text = "Settings", Font = Theme.Title, AutoSize = true, Margin = new Padding(0, Theme.Space6, 0, Theme.Space2) });
-        left.Controls.Add(new Label { Text = "Reset hotkey", ForeColor = Theme.TextMuted, AutoSize = true, Margin = new Padding(0, 0, 0, Theme.Space1) });
-        _resetHotkeyBox.Dock = DockStyle.Fill;
-        _resetHotkeyBox.Margin = new Padding(0, 0, 0, Theme.Space2);
-        left.Controls.Add(_resetHotkeyBox);
-        foreach (var check in new[] { _startWithWindows, _showToast, _guard })
-        {
-            check.Margin = new Padding(0, 2, 0, 2);
-            left.Controls.Add(check);
-        }
+        var settingsButton = Button("Settings", (_, _) => OpenSettings());
+        settingsButton.AutoSize = false;
+        settingsButton.Dock = DockStyle.Fill;
+        settingsButton.Height = Theme.ControlHeight;
+        settingsButton.Margin = new Padding(0, Theme.Space3, 0, 0);
+        left.Controls.Add(settingsButton);
         root.Controls.Add(left, 0, 0);
 
         // Right: editor
@@ -137,10 +126,6 @@ public sealed class MainForm : Form
         _nameBox.TextChanged += (_, _) => { if (_editing is not null && !_loading) { _editing.Name = _nameBox.Text; _controller.Save(); } };
         _hotkeyBox.ComboChanged += (_, _) => { if (_editing is not null && !_loading) { _editing.Hotkey = _hotkeyBox.Combo; SaveSettingsAndRegister(_hotkeyBox); } };
         _targetBox.SelectedIndexChanged += (_, _) => { if (_editing is not null && !_loading) { _editing.Target = TargetFromCombo(); _controller.Save(); } };
-        _resetHotkeyBox.ComboChanged += (_, _) => { if (!_loading) { _controller.Settings.ResetHotkey = _resetHotkeyBox.Combo; SaveSettingsAndRegister(); } };
-        _startWithWindows.CheckedChanged += (_, _) => { if (!_loading) _controller.SetStartWithWindows(_startWithWindows.Checked); };
-        _showToast.CheckedChanged += (_, _) => { if (!_loading) { _controller.Settings.ShowToast = _showToast.Checked; _controller.Save(); } };
-        _guard.CheckedChanged += (_, _) => { if (!_loading) { _controller.Settings.GuardEnabled = _guard.Checked; _controller.Save(); } };
         _profileList.SelectedIndexChanged += (_, _) => LoadSelectedProfile();
 
         if (!_controller.Vibrance.IsAvailable)
@@ -279,16 +264,6 @@ public sealed class MainForm : Form
         }
     }
 
-    private void LoadSettingsIntoControls()
-    {
-        _loading = true;
-        _resetHotkeyBox.Combo = _controller.Settings.ResetHotkey;
-        _startWithWindows.Checked = _controller.Settings.StartWithWindows;
-        _showToast.Checked = _controller.Settings.ShowToast;
-        _guard.Checked = _controller.Settings.GuardEnabled;
-        _loading = false;
-    }
-
     private void RefreshProfileList(bool keepSelection = false)
     {
         var selected = _profileList.SelectedIndex;
@@ -405,5 +380,11 @@ public sealed class MainForm : Form
             e.Cancel = true;
             Hide();
         }
+    }
+
+    private void OpenSettings()
+    {
+        using var dialog = new SettingsForm(_controller);
+        dialog.ShowDialog(this);
     }
 }
