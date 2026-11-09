@@ -36,7 +36,7 @@ public sealed class GkGroup : Panel
         foreach (Control c in Content.Controls)
         {
             int w = inner - c.Margin.Horizontal;
-            if (w > 0 && c.Width != w) c.Width = w;
+            if (!c.AutoSize && w > 0 && c.Width != w) c.Width = w;
         }
         int h = Content.Bottom + Padding.Bottom;
         if (Height != h) Height = h;

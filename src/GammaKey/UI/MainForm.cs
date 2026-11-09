@@ -161,11 +161,14 @@ public sealed class MainForm : Form
 
         var profileGroup = new GkGroup("Profile");
         profileGroup.Content.Controls.Add(FormRow(new Label { Text = "Name" }, _nameBox));
-        var two = new TableLayoutPanel { ColumnCount = 2, AutoSize = true, Margin = Padding.Empty, BackColor = Theme.Panel };
+        var two = new TableLayoutPanel { ColumnCount = 2, Height = Theme.ControlHeight + 10, Margin = Padding.Empty, BackColor = Theme.Panel };
         two.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
         two.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
-        two.Controls.Add(FormRow(new Label { Text = "Hotkey" }, _hotkeyBox), 0, 0);
-        two.Controls.Add(FormRow(new Label { Text = "Monitors" }, _targetBox), 1, 0);
+        var hotkeyRow = FormRow(new Label { Text = "Hotkey" }, _hotkeyBox);
+        var targetRow = FormRow(new Label { Text = "Monitors" }, _targetBox);
+        hotkeyRow.Dock = targetRow.Dock = DockStyle.Fill;
+        two.Controls.Add(hotkeyRow, 0, 0);
+        two.Controls.Add(targetRow, 1, 0);
         profileGroup.Content.Controls.Add(two);
         editor.Controls.Add(profileGroup);
 
@@ -190,7 +193,6 @@ public sealed class MainForm : Form
         {
             int w = editor.ClientSize.Width - editor.Padding.Horizontal;
             foreach (Control c in editor.Controls) if (c is GkGroup) c.Width = w;
-            two.Width = w - profileGroup.Padding.Horizontal;
         };
 
         // Status bar
