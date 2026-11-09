@@ -30,6 +30,15 @@ driver. It never opens, reads, hooks or injects anything into a game. It runs wi
 - **Original settings** are saved to `baseline.json` on start and restored on Reset, on Quit, and on the
   next start if GammaKey was closed uncleanly.
 
+## Games
+
+Run games in borderless windowed mode. In exclusive fullscreen many games write their own
+gamma curve when they gain focus, which overwrites GammaKey until the next hotkey press.
+
+Hotkeys swallow their key by default, so a profile on `Numpad1` stops `1` typing anywhere.
+Settings has "Let hotkeys pass through to other apps", which uses a system-wide keyboard
+hook instead. Some anti-cheat systems flag that; the safer choice is a Ctrl or Alt modifier.
+
 ## Build from source
 
 Needs the .NET 8 SDK.
