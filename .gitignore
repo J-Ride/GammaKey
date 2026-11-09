@@ -21,3 +21,8 @@ graphify-out/
 .pytest_cache/
 coverage/
 .superpowers/
+
+bin/
+obj/
+publish/
+*.user
