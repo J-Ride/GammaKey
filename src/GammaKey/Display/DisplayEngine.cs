@@ -70,11 +70,14 @@ public sealed class DisplayEngine
             else anyRefused = true;
         }
 
+        if (anyRefused && !anyAccepted)
+            return new ApplyResult(false, "Windows refused this curve, reduce the sliders");
+
+        // Only an accepted table becomes the guard's target; a refused one would be
+        // rewritten on every tick for nothing.
         _activeRamp = ramp;
         _activeMonitors = monitors;
 
-        if (anyRefused && !anyAccepted)
-            return new ApplyResult(false, "Windows refused this curve, reduce the sliders");
         if (anyRefused)
             return new ApplyResult(true, "One monitor refused the curve");
         return new ApplyResult(true, null);
