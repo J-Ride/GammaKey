@@ -2,7 +2,7 @@ using System.Runtime.InteropServices;
 
 namespace GammaKey.Hotkeys;
 
-public sealed class HotkeyListener : NativeWindow, IDisposable
+public sealed class HotkeyListener : NativeWindow, IHotkeyListener
 {
     private const int WmHotkey = 0x0312;
     private readonly HashSet<int> _registered = new();

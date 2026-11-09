@@ -173,6 +173,24 @@ public class ProfileStoreTests : IDisposable
     }
 
     [Fact]
+    public void HotkeyPassthroughRoundTrips()
+    {
+        var store = new ProfileStore(PathFor("profiles.json"));
+        store.Save(new AppSettings { HotkeyPassthrough = true });
+
+        Assert.True(store.Load().HotkeyPassthrough);
+    }
+
+    [Fact]
+    public void FileWithoutHotkeyPassthroughLoadsAsFalse()
+    {
+        var path = PathFor("profiles.json");
+        File.WriteAllText(path, """{ "version": 1, "profiles": [] }""");
+
+        Assert.False(new ProfileStore(path).Load().HotkeyPassthrough);
+    }
+
+    [Fact]
     public void TryParseReturnsNullForInvalidJson()
     {
         Assert.Null(ProfileStore.TryParse("{ not json"));
