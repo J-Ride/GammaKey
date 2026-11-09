@@ -52,13 +52,17 @@ public sealed class GkToggle : Control
         using (var kb = new SolidBrush(_checked ? Color.White : Theme.TextMuted)) Theme.FillRounded(g, kb, knobRect, 2);
 
         int textRight = sw.Left - Theme.Space3;
-        var titleSize = TextRenderer.MeasureText(g, Text, Theme.Label, new Size(textRight, Height), TextFormatFlags.NoPadding);
-        var titleRect = new Rectangle(0, Theme.Space1, textRight, titleSize.Height);
+        bool hasFlag = !string.IsNullOrEmpty(Flag);
+        var flagSize = hasFlag ? TextRenderer.MeasureText(g, Flag, Theme.MonoSmall, Size.Empty, TextFormatFlags.NoPadding) : Size.Empty;
+        int flagWidth = hasFlag ? flagSize.Width + 10 : 0;
+        int titleMax = Math.Max(0, hasFlag ? textRight - flagWidth - Theme.Space2 : textRight);
+        var titleSize = TextRenderer.MeasureText(g, Text, Theme.Label, new Size(titleMax, Height), TextFormatFlags.NoPadding | TextFormatFlags.EndEllipsis);
+        var titleRect = new Rectangle(0, Theme.Space1, titleMax, titleSize.Height);
         TextRenderer.DrawText(g, Text, Theme.Label, titleRect, Enabled ? Theme.TextPrimary : Theme.TextDim, TextFormatFlags.Left | TextFormatFlags.NoPadding | TextFormatFlags.EndEllipsis);
-        if (!string.IsNullOrEmpty(Flag))
+        if (hasFlag)
         {
-            var flagSize = TextRenderer.MeasureText(g, Flag, Theme.MonoSmall, Size.Empty, TextFormatFlags.NoPadding);
-            var flagRect = new Rectangle(titleSize.Width + Theme.Space2, titleRect.Top + 1, flagSize.Width + 10, flagSize.Height + 3);
+            int flagLeft = Math.Min(titleSize.Width + Theme.Space2, textRight - flagWidth);
+            var flagRect = new Rectangle(flagLeft, titleRect.Top + 1, flagWidth, flagSize.Height + 3);
             using var fp = new Pen(Color.FromArgb(115, Theme.Warning));
             Theme.DrawRounded(g, fp, flagRect, 3);
             TextRenderer.DrawText(g, Flag, Theme.MonoSmall, flagRect, Theme.Warning, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
