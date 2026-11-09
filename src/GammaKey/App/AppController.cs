@@ -36,6 +36,10 @@ public sealed class AppController : IDisposable
         _baselineStore = new BaselineStore(Path.Combine(baseDirectory, "baseline.json"));
         Settings = _profileStore.Load();
         _hotkeys = CreateListener(Settings.HotkeyPassthrough);
+        // Memory only, no Save: the saved choice stays on so the next launch tries the hook
+        // again, while the Settings checkbox shows the mode that is really running.
+        if (Settings.HotkeyPassthrough && _hotkeys is not KeyboardHookListener)
+            Settings.HotkeyPassthrough = false;
         _hotkeys.Pressed += OnHotkeyPressed;
         _guard.Tick += (_, _) => { if (Settings.GuardEnabled) Display.ReapplyIfCleared(); };
     }
@@ -138,24 +142,25 @@ public sealed class AppController : IDisposable
         Save();
     }
 
-    private static IHotkeyListener CreateListener(bool passthrough) =>
-        passthrough ? new KeyboardHookListener() : new HotkeyListener();
+    private static IHotkeyListener CreateListener(bool passthrough)
+    {
+        if (!passthrough) return new HotkeyListener();
+        var hook = new KeyboardHookListener();
+        if (hook.IsInstalled) return hook;
+        // A hook that failed to install would leave every hotkey dead, so use normal mode.
+        hook.Dispose();
+        return new HotkeyListener();
+    }
 
-    /// Returns true when the requested mode is active afterwards.
+    // Returns true when the requested mode is active afterwards.
     public bool SetHotkeyPassthrough(bool on)
     {
         if (Settings.HotkeyPassthrough == on) return true;
         _hotkeys.Pressed -= OnHotkeyPressed;
         _hotkeys.Dispose();
         _hotkeys = CreateListener(on);
-        // A hook that failed to install would leave every hotkey dead, so keep normal mode.
-        bool isActive = _hotkeys is not KeyboardHookListener { IsInstalled: false };
-        if (!isActive)
-        {
-            _hotkeys.Dispose();
-            _hotkeys = new HotkeyListener();
-        }
         _hotkeys.Pressed += OnHotkeyPressed;
+        bool isActive = (_hotkeys is KeyboardHookListener) == on;
         if (isActive)
         {
             Settings.HotkeyPassthrough = on;
