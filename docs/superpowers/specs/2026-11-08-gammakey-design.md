@@ -168,3 +168,46 @@ the slider stays greyed with a note while HDR is on.
 - PrismHDR: https://github.com/Fennix36GH/PrismHDR
 - chromashift HDR issue: https://github.com/designmatty/chromashift/issues/89
 - dantmnf MHC2 notes: https://github.com/dantmnf/MHC2
+
+## 11. UI tokens
+
+Source: `ui-ux-pro-max` skill, `--design-system` query "gaming utility desktop tool dark mode
+minimal" (style "Dark Mode (OLED)") and `--domain color "gaming dark utility"` (palette "Gaming",
+neon purple). The skill targets web and mobile, so values that it does not give for WinForms keep
+the Task 11 brief defaults. Constants live in `src/GammaKey/UI/Theme.cs`.
+
+| Token | Value | Source | Use |
+|---|---|---|---|
+| Background | `#0F0F23` (15,15,35) | skill Background | Window and panel fill |
+| Surface | `#1E1C35` (30,28,53) | skill Card | List, text boxes, buttons |
+| SurfaceRaised | `#27273B` (39,39,59) | skill Muted | Selected list row, button hover, toast |
+| Border | `#4C1D95` (76,29,149) | skill Border | Button outline, slider track, toast outline |
+| TextPrimary | `#E2E8F0` (226,232,240) | skill Foreground | Body text, slider thumb (15.3:1 on Background) |
+| TextMuted | `#94A3B8` (148,163,184) | skill Muted Foreground | Row labels, captions (7.4:1) |
+| Accent | `#A78BFA` (167,139,250) | skill Secondary | Apply button, slider fill, selection bar, tray mark |
+| AccentHover | `#C4B5FD` (196,181,253) | derived, one step lighter violet | Apply hover, thumb while dragging |
+| FocusRing | `#7C3AED` (124,58,237) | skill Ring / Primary | 2 px ring 3 px outside the slider thumb (3.3:1) |
+| Warning | `#FFB04C` (255,176,76) | brief default (skill has none) | Status line (10.4:1) |
+| Disabled | `#464A56` (70,74,86) | brief default | Disabled slider track, fill and thumb |
+| Text on Accent | Background `#0F0F23` | skill On Secondary | Apply label (6.9:1) |
+
+| Type role | Font | Use |
+|---|---|---|
+| Title | Segoe UI Semibold 15 pt | "Profile", "Settings", toast |
+| Label | Segoe UI 10 pt | Body and row labels |
+| Value | Segoe UI Semibold 10 pt | Numeric readouts (right aligned) |
+| Caption | Segoe UI 9 pt | Vibrance note |
+
+The skill suggests Inter; Segoe UI is kept because it is the Windows system font and needs no
+install.
+
+| Layout token | Value |
+|---|---|
+| Spacing scale | 4 / 8 / 12 / 16 / 24 px (Space1, 2, 3, 4, 6) |
+| Window padding | 24 px; column gap 24 px |
+| Control height | 32 px (rows, buttons, list items) |
+| Label column | 100 px |
+| Button minimum width | 72 px |
+| Slider | track 6 px rounded, thumb 18 px circle, fill grows from the neutral value |
+| Disabled | whole control drawn in Disabled colour; slider and readout disabled; caption explains why |
+| Focus | slider: FocusRing 2 px ring; other controls: Windows focus cues |

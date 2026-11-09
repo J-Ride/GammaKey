@@ -7,7 +7,7 @@ public sealed class ToastForm : Form
     private static ToastForm? _current;
 
     private readonly System.Windows.Forms.Timer _timer = new() { Interval = 1200 };
-    private readonly Label _label = new() { AutoSize = true, Padding = new Padding(18, 10, 18, 10) };
+    private readonly Label _label = new() { AutoSize = true, Padding = new Padding(Theme.Space6, Theme.Space3, Theme.Space6, Theme.Space3) };
 
     private ToastForm(string text)
     {
@@ -15,9 +15,9 @@ public sealed class ToastForm : Form
         ShowInTaskbar = false;
         TopMost = true;
         StartPosition = FormStartPosition.Manual;
-        BackColor = System.Drawing.Color.FromArgb(28, 28, 32);
-        _label.ForeColor = System.Drawing.Color.White;
-        _label.Font = new Font("Segoe UI", 12f, FontStyle.Bold);
+        BackColor = Theme.SurfaceRaised;
+        _label.ForeColor = Theme.TextPrimary;
+        _label.Font = Theme.Title;
         _label.Text = text;
         Controls.Add(_label);
         AutoSize = true;
@@ -46,6 +46,13 @@ public sealed class ToastForm : Form
         base.OnLoad(e);
         var area = Screen.PrimaryScreen?.WorkingArea ?? new Rectangle(0, 0, 1920, 1080);
         Location = new Point(area.Left + (area.Width - Width) / 2, area.Top + 48);
+    }
+
+    protected override void OnPaint(PaintEventArgs e)
+    {
+        base.OnPaint(e);
+        using var pen = new Pen(Theme.Border);
+        e.Graphics.DrawRectangle(pen, 0, 0, Width - 1, Height - 1);
     }
 
     protected override void OnShown(EventArgs e)

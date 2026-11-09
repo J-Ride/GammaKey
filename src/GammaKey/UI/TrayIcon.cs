@@ -17,7 +17,7 @@ public sealed class TrayIcon : IDisposable
     {
         _controller = controller;
         _mainForm = mainForm;
-        _icon.Icon = SystemIcons.Application;
+        _icon.Icon = CreateIcon();
         _icon.Text = "GammaKey";
         _icon.Visible = true;
         _icon.ContextMenuStrip = _menu;
@@ -40,6 +40,19 @@ public sealed class TrayIcon : IDisposable
         _controller.ProfileApplied += _onProfileApplied;
         _controller.ResetApplied += _onResetApplied;
         RebuildMenu();
+    }
+
+    internal static Icon CreateIcon()
+    {
+        using var bmp = new Bitmap(32, 32);
+        using var g = Graphics.FromImage(bmp);
+        g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+        using var back = new SolidBrush(Theme.SurfaceRaised);
+        g.FillEllipse(back, 1, 1, 30, 30);
+        using var pen = new Pen(Theme.Accent, 3f);
+        // A rising curve: the gamma shape.
+        g.DrawBezier(pen, 7, 25, 10, 8, 20, 8, 25, 7);
+        return Icon.FromHandle(bmp.GetHicon());
     }
 
     private void RebuildMenu()

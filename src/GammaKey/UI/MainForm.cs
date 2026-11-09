@@ -6,7 +6,7 @@ namespace GammaKey.UI;
 public sealed class MainForm : Form
 {
     private readonly AppController _controller;
-    private readonly ListBox _profileList = new() { Dock = DockStyle.Fill, IntegralHeight = false };
+    private readonly ListBox _profileList = new() { Dock = DockStyle.Fill, IntegralHeight = false, Margin = Padding.Empty };
     private readonly TextBox _nameBox = new() { Width = 260 };
     private readonly HotkeyCaptureBox _hotkeyBox = new() { Width = 260 };
     private readonly ComboBox _targetBox = new() { Width = 260, DropDownStyle = ComboBoxStyle.DropDownList };
@@ -14,16 +14,17 @@ public sealed class MainForm : Form
     private readonly CheckBox _startWithWindows = new() { Text = "Start with Windows", AutoSize = true };
     private readonly CheckBox _showToast = new() { Text = "Show profile name on hotkey", AutoSize = true };
     private readonly CheckBox _guard = new() { Text = "Re-apply if Windows resets the curve", AutoSize = true };
-    private readonly Label _status = new() { AutoSize = true, ForeColor = System.Drawing.Color.DarkOrange };
-    private readonly Label _vibranceNote = new() { AutoSize = true, ForeColor = System.Drawing.Color.Gray };
+    private readonly Label _status = new() { AutoSize = true, ForeColor = Theme.Warning, MaximumSize = new Size(420, 0), Margin = new Padding(Theme.LabelColumnWidth, Theme.Space1, 0, 0) };
+    private readonly Label _vibranceNote = new() { AutoSize = true, ForeColor = Theme.TextMuted, Font = Theme.Caption, Margin = new Padding(Theme.LabelColumnWidth, 0, 0, Theme.Space1) };
 
-    private readonly TrackBar _gamma = new() { Minimum = 30, Maximum = 280, TickFrequency = 10, Width = 320 };
-    private readonly TrackBar _brightness = new() { Minimum = -100, Maximum = 100, TickFrequency = 10, Width = 320 };
-    private readonly TrackBar _contrast = new() { Minimum = -100, Maximum = 100, TickFrequency = 10, Width = 320 };
-    private readonly TrackBar _shadows = new() { Minimum = -100, Maximum = 100, TickFrequency = 10, Width = 320 };
-    private readonly TrackBar _highlights = new() { Minimum = -100, Maximum = 100, TickFrequency = 10, Width = 320 };
-    private readonly TrackBar _vibrance = new() { Minimum = 50, Maximum = 100, TickFrequency = 5, Width = 320 };
-    private readonly Dictionary<TrackBar, NumericUpDown> _numbers = new();
+    private readonly GkSlider _gamma = new() { Minimum = 30, Maximum = 280, Origin = 100, Width = 320 };
+    private readonly GkSlider _brightness = new() { Minimum = -100, Maximum = 100, Origin = 0, Width = 320 };
+    private readonly GkSlider _contrast = new() { Minimum = -100, Maximum = 100, Origin = 0, Width = 320 };
+    private readonly GkSlider _shadows = new() { Minimum = -100, Maximum = 100, Origin = 0, Width = 320 };
+    private readonly GkSlider _highlights = new() { Minimum = -100, Maximum = 100, Origin = 0, Width = 320 };
+    private readonly GkSlider _vibrance = new() { Minimum = 50, Maximum = 100, Origin = 50, Width = 320 };
+    private readonly Dictionary<GkSlider, NumericUpDown> _numbers = new();
+    private Button _applyButton = null!;
 
     private Profile? _editing;
     private bool _loading;
@@ -34,6 +35,10 @@ public sealed class MainForm : Form
         Text = "GammaKey";
         Width = 900;
         Height = 640;
+        // Scale the pixel layout with the display so text is not clipped at 125 and 150 percent.
+        AutoScaleDimensions = new SizeF(96f, 96f);
+        AutoScaleMode = AutoScaleMode.Dpi;
+        Icon = TrayIcon.CreateIcon();
         StartPosition = FormStartPosition.CenterScreen;
         FormClosing += OnFormClosing;
         _controller.SettingsChanged += () =>
@@ -44,10 +49,16 @@ public sealed class MainForm : Form
         };
 
         BuildLayout();
+        Theme.Apply(this);
+        _applyButton.BackColor = Theme.Accent;
+        _applyButton.ForeColor = Theme.Background;
+        _applyButton.FlatAppearance.BorderColor = Theme.Accent;
+        _applyButton.FlatAppearance.MouseOverBackColor = Theme.AccentHover;
         LoadMonitorsIntoTarget();
         LoadSettingsIntoControls();
         RefreshProfileList();
         if (_profileList.Items.Count > 0) _profileList.SelectedIndex = 0;
+        SetEditorEnabled(_editing is not null);
     }
 
     public void ShowAndFocus()
@@ -59,25 +70,46 @@ public sealed class MainForm : Form
 
     private void BuildLayout()
     {
-        var root = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, Padding = new Padding(12) };
-        root.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 240));
+        var root = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, Padding = new Padding(Theme.Space6) };
+        root.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 280));
         root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         Controls.Add(root);
 
-        // Left: profile list and buttons
-        var left = new TableLayoutPanel { Dock = DockStyle.Fill, RowCount = 2 };
+        // Left: profile list, its buttons, then app settings. Settings sit here because the
+        // editor column fills the 640 px window height on its own.
+        var left = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, Margin = Padding.Empty };
+        left.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         left.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        left.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        left.Controls.Add(_profileList, 0, 0);
-        var leftButtons = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoSize = true };
-        leftButtons.Controls.Add(Button("Add", (_, _) => AddProfile()));
-        leftButtons.Controls.Add(Button("Duplicate", (_, _) => DuplicateProfile()));
-        leftButtons.Controls.Add(Button("Delete", (_, _) => DeleteProfile()));
-        left.Controls.Add(leftButtons, 0, 1);
+        left.Controls.Add(_profileList);
+        var leftButtons = new TableLayoutPanel { Dock = DockStyle.Fill, Height = Theme.ControlHeight, ColumnCount = 3, RowCount = 1, Margin = new Padding(0, Theme.Space3, 0, 0) };
+        leftButtons.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        string[] names = ["Add", "Duplicate", "Delete"];
+        EventHandler[] handlers = [(_, _) => AddProfile(), (_, _) => DuplicateProfile(), (_, _) => DeleteProfile()];
+        for (int i = 0; i < names.Length; i++)
+        {
+            leftButtons.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f / names.Length));
+            var button = Button(names[i], handlers[i]);
+            button.AutoSize = false;
+            button.Dock = DockStyle.Fill;
+            button.Margin = new Padding(0, 0, i < names.Length - 1 ? Theme.Space2 : 0, 0);
+            leftButtons.Controls.Add(button, i, 0);
+        }
+        left.Controls.Add(leftButtons);
+        left.Controls.Add(new Label { Text = "Settings", Font = Theme.Title, AutoSize = true, Margin = new Padding(0, Theme.Space6, 0, Theme.Space2) });
+        left.Controls.Add(new Label { Text = "Reset hotkey", ForeColor = Theme.TextMuted, AutoSize = true, Margin = new Padding(0, 0, 0, Theme.Space1) });
+        _resetHotkeyBox.Dock = DockStyle.Fill;
+        _resetHotkeyBox.Margin = new Padding(0, 0, 0, Theme.Space2);
+        left.Controls.Add(_resetHotkeyBox);
+        foreach (var check in new[] { _startWithWindows, _showToast, _guard })
+        {
+            check.Margin = new Padding(0, 2, 0, 2);
+            left.Controls.Add(check);
+        }
         root.Controls.Add(left, 0, 0);
 
         // Right: editor
-        var right = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown, WrapContents = false, AutoScroll = true, Padding = new Padding(16, 0, 0, 0) };
+        var right = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown, WrapContents = false, AutoScroll = true, Padding = new Padding(Theme.Space6, 0, 0, 0) };
+        right.Controls.Add(new Label { Text = "Profile", Font = Theme.Title, AutoSize = true, Margin = new Padding(0, 0, 0, Theme.Space2) });
         right.Controls.Add(Row("Name", _nameBox));
         right.Controls.Add(Row("Hotkey", _hotkeyBox));
         right.Controls.Add(Row("Monitors", _targetBox));
@@ -89,18 +121,13 @@ public sealed class MainForm : Form
         right.Controls.Add(Slider("Vibrance", _vibrance));
         right.Controls.Add(_vibranceNote);
 
-        var actions = new FlowLayoutPanel { AutoSize = true };
-        actions.Controls.Add(Button("Apply", (_, _) => ApplyCurrent()));
+        var actions = new FlowLayoutPanel { AutoSize = true, Margin = new Padding(Theme.LabelColumnWidth, Theme.Space2, 0, 0) };
+        _applyButton = Button("Apply", (_, _) => ApplyCurrent());
+        actions.Controls.Add(_applyButton);
         actions.Controls.Add(Button("Save", (_, _) => SaveCurrent()));
         actions.Controls.Add(Button("Reset", (_, _) => _controller.Reset()));
         right.Controls.Add(actions);
         right.Controls.Add(_status);
-
-        right.Controls.Add(new Label { Text = "Settings", Font = new Font(Font, FontStyle.Bold), AutoSize = true, Margin = new Padding(0, 16, 0, 4) });
-        right.Controls.Add(Row("Reset hotkey", _resetHotkeyBox));
-        right.Controls.Add(_startWithWindows);
-        right.Controls.Add(_showToast);
-        right.Controls.Add(_guard);
         root.Controls.Add(right, 1, 0);
 
         _nameBox.TextChanged += (_, _) => { if (_editing is not null && !_loading) { _editing.Name = _nameBox.Text; RefreshProfileList(keepSelection: true); } };
@@ -121,26 +148,42 @@ public sealed class MainForm : Form
 
     private static Button Button(string text, EventHandler onClick)
     {
-        var b = new Button { Text = text, AutoSize = true, Padding = new Padding(8, 2, 8, 2) };
+        var b = new Button { Text = text, AutoSize = true, MinimumSize = new Size(72, Theme.ControlHeight), Margin = new Padding(0, 0, Theme.Space2, 0) };
         b.Click += onClick;
         return b;
     }
 
-    private static Control Row(string label, Control input)
+    private static Control Row(string label, Control input) => FormRow(new Label { Text = label, ForeColor = Theme.TextMuted }, input);
+
+    // One grid for every editor row so labels share one column width and rows share one height.
+    private static TableLayoutPanel FormRow(Label label, params Control[] inputs)
     {
-        var panel = new FlowLayoutPanel { AutoSize = true, Margin = new Padding(0, 4, 0, 4) };
-        panel.Controls.Add(new Label { Text = label, Width = 100, TextAlign = ContentAlignment.MiddleLeft, Height = input.Height });
-        panel.Controls.Add(input);
+        var panel = new TableLayoutPanel { AutoSize = true, ColumnCount = inputs.Length + 1, RowCount = 1, Margin = new Padding(0, 2, 0, 2) };
+        panel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, Theme.LabelColumnWidth));
+        panel.RowStyles.Add(new RowStyle(SizeType.Absolute, Theme.ControlHeight));
+        label.AutoSize = true;
+        label.Anchor = AnchorStyles.Left;
+        label.Margin = Padding.Empty;
+        panel.Controls.Add(label, 0, 0);
+        for (int i = 0; i < inputs.Length; i++)
+        {
+            panel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            inputs[i].Anchor = AnchorStyles.Left;
+            inputs[i].Margin = new Padding(0, 0, Theme.Space3, 0);
+            panel.Controls.Add(inputs[i], i + 1, 0);
+        }
         return panel;
     }
 
-    private Control Slider(string label, TrackBar bar, bool isGamma = false)
+    private Control Slider(string label, GkSlider bar, bool isGamma = false)
     {
         var number = new NumericUpDown
         {
             Minimum = bar.Minimum,
             Maximum = bar.Maximum,
             Width = 70,
+            Font = Theme.Value,
+            TextAlign = HorizontalAlignment.Right,
             DecimalPlaces = isGamma ? 2 : 0,
             Increment = isGamma ? 0.01m : 1m,
         };
@@ -168,11 +211,7 @@ public sealed class MainForm : Form
             PushValuesToProfileAndPreview();
         };
 
-        var panel = new FlowLayoutPanel { AutoSize = true, Margin = new Padding(0, 2, 0, 2) };
-        panel.Controls.Add(new Label { Text = label, Width = 100, TextAlign = ContentAlignment.MiddleLeft, Height = bar.Height });
-        panel.Controls.Add(bar);
-        panel.Controls.Add(number);
-        return panel;
+        return FormRow(new Label { Text = label, Font = Theme.Label, ForeColor = Theme.TextMuted }, bar, number);
     }
 
     private void LoadMonitorsIntoTarget()
