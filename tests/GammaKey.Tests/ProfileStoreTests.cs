@@ -147,4 +147,21 @@ public class ProfileStoreTests : IDisposable
 
         Assert.False(new ProfileStore(path).Load().ShowWindowOnLaunch);
     }
+
+    [Fact]
+    public void TryParseReturnsNullForInvalidJson()
+    {
+        Assert.Null(ProfileStore.TryParse("{ not json"));
+    }
+
+    [Fact]
+    public void TryParseClampsAndFillsDefaults()
+    {
+        var settings = ProfileStore.TryParse("""{ "profiles": [ { "name": "Wild", "gamma": 9.0, "hotkey": null } ] }""");
+
+        var p = Assert.Single(settings!.Profiles);
+        Assert.Equal(2.8, p.Values.Gamma);
+        Assert.Equal("", p.Hotkey);
+        Assert.False(string.IsNullOrEmpty(p.Id));
+    }
 }

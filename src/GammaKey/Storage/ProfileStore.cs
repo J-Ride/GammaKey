@@ -25,19 +25,31 @@ public sealed class ProfileStore
     {
         if (!File.Exists(Path)) return Defaults();
 
-        AppSettings? settings = null;
-        try
-        {
-            settings = JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(Path), JsonOptions);
-        }
-        catch (JsonException)
+        var settings = TryParse(File.ReadAllText(Path));
+        if (settings is null)
         {
             // A half-written or hand-edited file must never lose the user's profiles silently,
             // so keep a copy next to it before falling back.
             File.Copy(Path, Path + ".corrupt", overwrite: true);
+            return Defaults();
         }
+        return settings;
+    }
 
-        if (settings is null) return Defaults();
+    // Shared by Load and by profile import, so an imported file gets the same clamping and
+    // null fixes as the app's own file.
+    public static AppSettings? TryParse(string json)
+    {
+        AppSettings? settings;
+        try
+        {
+            settings = JsonSerializer.Deserialize<AppSettings>(json, JsonOptions);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+        if (settings is null) return null;
 
         settings.Profiles ??= new List<Profile>();
         settings.Profiles.RemoveAll(p => p is null);
