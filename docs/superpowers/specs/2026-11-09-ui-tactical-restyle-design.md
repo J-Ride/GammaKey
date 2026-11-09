@@ -19,7 +19,7 @@ No new dependency. No new feature: every element on screen maps to data the app 
 | Decision | Choice | Why |
 |---|---|---|
 | UI library | None. Owner-drawn controls in `src/GammaKey/UI/` | CLAUDE.md: no NuGet beyond xUnit. ReaLTaiizor rejected 2026-11-09 (size, own palettes, DPI). |
-| Fonts | Segoe UI Variable Text (fallback Segoe UI), Cascadia Mono (fallback Consolas) | Ship with Windows 11; no font files in the exe. |
+| Fonts | Segoe UI and Consolas only | Both ship on Windows 10 and 11, so every machine renders the same layout. No font files in the exe. Segoe UI Variable and Cascadia Mono rejected 2026-11-09: Windows 11 only. |
 | Accent | Crosshair cyan, one accent only | Jordan rejected purple. Amber for warnings, red only on Delete, green only for "ready" dots. |
 | Shapes | 4 px radius, 1 px lines, diamond slider thumb, square toggle | Tool look, not web look. |
 | Title bar | DWM immersive dark mode + rounded corners | Removes the white caption bar, the biggest "basic WinForms" tell. |
@@ -48,12 +48,12 @@ No new dependency. No new feature: every element on screen maps to data the app 
 
 | Type role | Font | Use |
 |---|---|---|
-| Title | Segoe UI Variable Text Semibold 12 pt | Editor heading (profile name) |
-| Label | Segoe UI Variable Text 9.5 pt | Body and row labels |
-| Eyebrow | Segoe UI Variable Text Semibold 8 pt, uppercase, +1.5 px tracking | Group headers, rail head |
-| Mono | Cascadia Mono 9.5 pt | Numbers, hotkey chips, status bar |
-| MonoSmall | Cascadia Mono 7.5 pt | Scale labels, version |
-| Caption | Segoe UI Variable Text 8.5 pt | Toggle descriptions, notes |
+| Title | Segoe UI Semibold 12 pt | Editor heading (profile name) |
+| Label | Segoe UI 9.5 pt | Body and row labels |
+| Eyebrow | Segoe UI Semibold 8 pt, uppercase | Group headers, rail head |
+| Mono | Consolas 9.5 pt | Numbers, hotkey chips, status bar |
+| MonoSmall | Consolas 7.5 pt | Scale labels, version |
+| Caption | Segoe UI 8.5 pt | Toggle descriptions, notes |
 
 Spacing stays on the 4 px scale (Space1..Space6). ControlHeight 30. Radius 4.
 

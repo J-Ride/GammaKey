@@ -11,6 +11,7 @@
 ## Global Constraints
 
 - No NuGet beyond xUnit (`CLAUDE.md`). No image or font assets in the exe.
+- Fonts are Segoe UI and Consolas only (both on Windows 10 and 11). Never name Segoe UI Variable or Cascadia Mono.
 - Spec: `docs/superpowers/specs/2026-11-09-ui-tactical-restyle-design.md`. Token values in its section 4 are exact.
 - Every colour and font comes from `Theme`. No literal colours in controls.
 - Keep public APIs listed in spec section 6 so `MainForm` and `SettingsForm` wiring stays small.
@@ -92,8 +93,9 @@ public static class Theme
     public static readonly Color Danger = Color.FromArgb(239, 83, 80);
     public static readonly Color Ok = Color.FromArgb(90, 211, 138);
 
-    private static readonly string Sans = ResolveFamily("Segoe UI Variable Text", "Segoe UI");
-    private static readonly string MonoFamily = ResolveFamily("Cascadia Mono", "Consolas");
+    // Both families ship on Windows 10 and 11, so the layout is the same on every machine.
+    private static readonly string Sans = ResolveFamily("Segoe UI");
+    private static readonly string MonoFamily = ResolveFamily("Consolas");
 
     public static readonly Font Title = new(Sans, 12f, FontStyle.Bold);
     public static readonly Font Label = new(Sans, 9.5f);
@@ -204,7 +206,7 @@ Expected: all pass, including the two new ones.
 
 ```bash
 git add src/GammaKey/UI/Theme.cs src/GammaKey/UI/GkSlider.cs src/GammaKey/UI/ToastForm.cs src/GammaKey/UI/TrayIcon.cs src/GammaKey/UI/MainForm.cs tests/GammaKey.Tests/ThemeTests.cs
-git commit -m "Theme: graphite and cyan tokens, Windows-native font resolution with fallback"
+git commit -m "Theme: graphite and cyan tokens, Segoe UI and Consolas with installed-font guard"
 ```
 
 ---
@@ -1268,7 +1270,7 @@ public sealed class GkGroup : Panel
 }
 ```
 
-Letter-spacing is not available in GDI text; the eyebrow uses uppercase bold 8 pt and reads close enough to the mock.
+Letter-spacing is not available in GDI text; the eyebrow uses uppercase bold 8 pt Segoe UI.
 
 - [ ] **Step 2: Create GkChip.cs**
 
@@ -2099,7 +2101,7 @@ Replace the body of section 11 (table rows included) with:
 ## 11. UI tokens
 
 Superseded 2026-11-09 by `2026-11-09-ui-tactical-restyle-design.md` section 4 (graphite palette,
-cyan accent, Windows-native fonts). Constants live in `src/GammaKey/UI/Theme.cs`.
+cyan accent, Segoe UI and Consolas). Constants live in `src/GammaKey/UI/Theme.cs`.
 ```
 
 - [ ] **Step 2: Format and full test run**
