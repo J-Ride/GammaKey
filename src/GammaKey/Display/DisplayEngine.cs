@@ -54,6 +54,14 @@ public sealed class DisplayEngine
         ClearActive();
     }
 
+    public void ResetToIdentity()
+    {
+        var identity = CurveBuilder.Build(ColorValues.Normal);
+        foreach (var monitor in GetMonitors())
+            GammaRampNative.Set(monitor.DeviceName, identity);
+        ClearActive();
+    }
+
     public ApplyResult Apply(ColorValues values, IReadOnlyList<MonitorInfo> monitors)
     {
         var ramp = CurveBuilder.Build(values);

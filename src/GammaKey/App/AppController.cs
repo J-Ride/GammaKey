@@ -44,10 +44,17 @@ public sealed class AppController : IDisposable
         // A lock file left behind means the last run died with a curve applied. Put the
         // original back first so the fresh baseline is the real one, not the stale profile.
         var previous = _baselineStore.Load();
-        if (File.Exists(LockPath) && previous is not null)
+        bool recoveringFromCrash = File.Exists(LockPath);
+        if (recoveringFromCrash && previous is not null)
         {
             Display.RestoreBaseline(previous);
             Vibrance.RestoreBaseline(previous);
+        }
+        else if (recoveringFromCrash)
+        {
+            // The crashed run left a profile curve on screen and no saved original; a flat
+            // table is a safer "original" than capturing that stale curve.
+            Display.ResetToIdentity();
         }
 
         _baseline = new Baseline();
@@ -95,7 +102,14 @@ public sealed class AppController : IDisposable
         var result = Display.Apply(values, monitors);
         if (Vibrance.IsAvailable)
             foreach (var monitor in monitors) Vibrance.SetSlider(monitor.DeviceName, values.Vibrance);
-        return result with { Note = result.Note ?? note };
+        var combined = (result.Note, note) switch
+        {
+            (null, null) => null,
+            (null, var n) => n,
+            (var r, null) => r,
+            (var r, var n) => $"{r}; {n}",
+        };
+        return result with { Note = combined };
     }
 
     public void Reset()
@@ -118,8 +132,12 @@ public sealed class AppController : IDisposable
         Save();
     }
 
+    private bool _isShutDown;
+
     public void Shutdown()
     {
+        if (_isShutDown) return;
+        _isShutDown = true;
         _guard.Stop();
         _hotkeys.UnregisterAll();
         Display.RestoreBaseline(_baseline);
@@ -141,6 +159,7 @@ public sealed class AppController : IDisposable
 
     public void Dispose()
     {
+        Shutdown();
         _guard.Dispose();
         _hotkeys.Dispose();
     }
