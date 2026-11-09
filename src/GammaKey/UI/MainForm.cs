@@ -56,7 +56,15 @@ public sealed class MainForm : Form
         LoadMonitorsIntoTarget();
         LoadSettingsIntoControls();
         RefreshProfileList();
-        if (_profileList.Items.Count > 0) _profileList.SelectedIndex = 0;
+        if (_profileList.Items.Count > 0)
+        {
+            // The form is built at every launch, even when it stays in the tray, and launch
+            // must not change the screen: select under _loading, then load without applying.
+            _loading = true;
+            _profileList.SelectedIndex = 0;
+            _loading = false;
+            LoadSelectedProfile(apply: false);
+        }
         SetEditorEnabled(_editing is not null);
     }
 
@@ -292,7 +300,7 @@ public sealed class MainForm : Form
         _loading = false;
     }
 
-    private void LoadSelectedProfile()
+    private void LoadSelectedProfile(bool apply = true)
     {
         if (_loading) return;
         var index = _profileList.SelectedIndex;
@@ -315,6 +323,7 @@ public sealed class MainForm : Form
             number.Value = ReferenceEquals(bar, _gamma) ? bar.Value / 100m : bar.Value;
         _loading = false;
         _hotkeyBox.ForeColor = Theme.TextPrimary;
+        if (!apply) return;
         // Clicking a profile is the same as pressing its hotkey: the screen changes at once.
         var result = _controller.ApplyProfile(_editing);
         _status.Text = result.Note ?? "";
