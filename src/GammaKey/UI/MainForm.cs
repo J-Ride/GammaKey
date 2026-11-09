@@ -1,6 +1,9 @@
+using System.Text.Json;
+
 using GammaKey.App;
 using GammaKey.Hotkeys;
 using GammaKey.Models;
+using GammaKey.Storage;
 
 namespace GammaKey.UI;
 
@@ -10,6 +13,7 @@ public sealed class MainForm : Form
     private readonly ListBox _profileList = new() { Dock = DockStyle.Fill, IntegralHeight = false, Margin = Padding.Empty };
     // Slider (320) + gap + readout (70), so the inputs share the slider rows' right edge.
     private const int WideInputWidth = 320 + Theme.Space3 + 70;
+    private const string ProfileFileFilter = "GammaKey profiles (*.json)|*.json";
 
     private readonly TextBox _nameBox = new() { Width = WideInputWidth };
     private readonly HotkeyCaptureBox _hotkeyBox = new() { Width = WideInputWidth };
@@ -81,19 +85,13 @@ public sealed class MainForm : Form
         left.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         left.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         left.Controls.Add(_profileList);
-        var leftButtons = new TableLayoutPanel { Dock = DockStyle.Fill, Height = Theme.ControlHeight, ColumnCount = 3, RowCount = 1, Margin = new Padding(0, Theme.Space3, 0, 0) };
-        leftButtons.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        string[] names = ["Add", "Duplicate", "Delete"];
-        EventHandler[] handlers = [(_, _) => AddProfile(), (_, _) => DuplicateProfile(), (_, _) => DeleteProfile()];
-        for (int i = 0; i < names.Length; i++)
-        {
-            leftButtons.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f / names.Length));
-            var button = Button(names[i], handlers[i]);
-            button.AutoSize = false;
-            button.Dock = DockStyle.Fill;
-            button.Margin = new Padding(0, 0, i < names.Length - 1 ? Theme.Space2 : 0, 0);
-            leftButtons.Controls.Add(button, i, 0);
-        }
+        // A wrapping row so five buttons fit the 280 px column without clipping any label.
+        var leftButtons = new FlowLayoutPanel { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, WrapContents = true, Dock = DockStyle.Fill, Margin = new Padding(0, Theme.Space3, 0, 0) };
+        leftButtons.Controls.Add(Button("Add", (_, _) => AddProfile()));
+        leftButtons.Controls.Add(Button("Duplicate", (_, _) => DuplicateProfile()));
+        leftButtons.Controls.Add(Button("Delete", (_, _) => DeleteProfile()));
+        leftButtons.Controls.Add(Button("Import", (_, _) => ImportProfiles()));
+        leftButtons.Controls.Add(Button("Export", (_, _) => ExportProfiles()));
         left.Controls.Add(leftButtons);
         var settingsButton = Button("Settings", (_, _) => OpenSettings());
         settingsButton.AutoSize = false;
@@ -370,6 +368,54 @@ public sealed class MainForm : Form
             LoadSelectedProfile();
         }
         else { _editing = null; SetEditorEnabled(false); }
+    }
+
+    private void ExportProfiles()
+    {
+        using var dialog = new SaveFileDialog { Filter = ProfileFileFilter, FileName = "GammaKey-profiles.json", DefaultExt = "json" };
+        if (dialog.ShowDialog(this) != DialogResult.OK) return;
+        try
+        {
+            // Same shape as profiles.json, so an export and a copied profiles.json both import.
+            File.WriteAllText(dialog.FileName, JsonSerializer.Serialize(_controller.Settings, ProfileStore.JsonOptions));
+            _status.Text = $"Exported {_controller.Settings.Profiles.Count} profiles.";
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            _status.Text = "Could not write that file.";
+        }
+    }
+
+    private void ImportProfiles()
+    {
+        using var dialog = new OpenFileDialog { Filter = ProfileFileFilter };
+        if (dialog.ShowDialog(this) != DialogResult.OK) return;
+
+        AppSettings? incoming = null;
+        try
+        {
+            incoming = ProfileStore.TryParse(File.ReadAllText(dialog.FileName));
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+        }
+        if (incoming is null || incoming.Profiles.Count == 0)
+        {
+            _status.Text = "Could not read that file. Is it a GammaKey profiles file?";
+            return;
+        }
+
+        var result = ProfileImport.Merge(_controller.Settings.Profiles, incoming.Profiles, _controller.Settings.ResetHotkey);
+        int firstNew = _controller.Settings.Profiles.Count;
+        _controller.Settings.Profiles.AddRange(result.Added);
+        SaveSettingsAndRegister();
+        _profileList.SelectedIndex = firstNew;
+        _status.Text = result.HotkeysCleared switch
+        {
+            0 => $"Imported {result.Added.Count} profiles.",
+            1 => $"Imported {result.Added.Count} profiles. 1 hotkey cleared because it was in use.",
+            var k => $"Imported {result.Added.Count} profiles. {k} hotkeys cleared because they were in use.",
+        };
     }
 
     private void OnFormClosing(object? sender, FormClosingEventArgs e)
