@@ -11,6 +11,9 @@ public sealed class Baseline
 
 public sealed class BaselineStore
 {
+    // The native SetDeviceGammaRamp call reads exactly 768 entries (3 channels x 256).
+    private const int RampLength = 256 * 3;
+
     private readonly string _path;
 
     public BaselineStore(string path)
@@ -25,9 +28,16 @@ public sealed class BaselineStore
         if (!File.Exists(_path)) return null;
         try
         {
-            return JsonSerializer.Deserialize<Baseline>(File.ReadAllText(_path), ProfileStore.JsonOptions);
+            var baseline = JsonSerializer.Deserialize<Baseline>(File.ReadAllText(_path), ProfileStore.JsonOptions);
+            if (baseline is null) return null;
+
+            baseline.Ramps ??= new();
+            baseline.VibranceLevels ??= new();
+            foreach (var key in baseline.Ramps.Where(r => r.Value is null || r.Value.Length != RampLength).Select(r => r.Key).ToList())
+                baseline.Ramps.Remove(key);
+            return baseline;
         }
-        catch (JsonException)
+        catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException)
         {
             return null;
         }
