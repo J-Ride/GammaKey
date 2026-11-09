@@ -22,6 +22,7 @@ internal static class Program
         controller.Start();
         var mainForm = new MainForm(controller);
         using var tray = new TrayIcon(controller, mainForm);
+        if (controller.Settings.ShowWindowOnLaunch) mainForm.ShowAndFocus();
         Application.ApplicationExit += (_, _) => controller.Shutdown();
 
         Application.Run();

@@ -129,4 +129,22 @@ public class ProfileStoreTests : IDisposable
 
         Assert.Single(Directory.GetFiles(_dir));
     }
+
+    [Fact]
+    public void ShowWindowOnLaunchRoundTrips()
+    {
+        var store = new ProfileStore(PathFor("profiles.json"));
+        store.Save(new AppSettings { ShowWindowOnLaunch = true });
+
+        Assert.True(store.Load().ShowWindowOnLaunch);
+    }
+
+    [Fact]
+    public void FileWithoutShowWindowOnLaunchLoadsAsFalse()
+    {
+        var path = PathFor("profiles.json");
+        File.WriteAllText(path, """{ "version": 1, "profiles": [] }""");
+
+        Assert.False(new ProfileStore(path).Load().ShowWindowOnLaunch);
+    }
 }
