@@ -46,12 +46,18 @@ public sealed class KeyboardHookListener : IHotkeyListener
     private readonly HashSet<uint> _down = new();
     // Held in a field so the GC cannot collect the delegate while Windows still calls it.
     private readonly HookProc _proc;
+    private readonly SynchronizationContext _context;
     private IntPtr _hook;
 
     public event Action<int>? Pressed;
 
+    public bool IsInstalled => _hook != IntPtr.Zero;
+
     public KeyboardHookListener()
     {
+        // WinForms installs its context only once the first control exists. The fallback
+        // still posts to this thread, which must pump messages anyway for the hook to run.
+        _context = SynchronizationContext.Current ?? new WindowsFormsSynchronizationContext();
         _proc = Callback;
         _hook = SetWindowsHookEx(WhKeyboardLl, _proc, GetModuleHandle(null), 0);
     }
@@ -59,32 +65,44 @@ public sealed class KeyboardHookListener : IHotkeyListener
     public bool Register(int id, HotkeyCombo combo)
     {
         _table.Register(id, combo);
-        // A hook is never refused by another app, so registration cannot fail.
-        return true;
+        // Hook install can fail; with a zero hook no hotkey will ever fire, so report refusal.
+        return _hook != IntPtr.Zero;
     }
 
     public void UnregisterAll() => _table.UnregisterAll();
 
     private IntPtr Callback(int code, IntPtr wParam, IntPtr lParam)
     {
-        if (code >= 0)
+        // An exception leaving a native callback kills the process, and CallNextHookEx must
+        // always run, so every failure here is swallowed.
+        try
         {
-            var info = Marshal.PtrToStructure<KbdLlHookStruct>(lParam);
-            int msg = wParam.ToInt32();
-            bool injected = (info.Flags & LlkhfInjected) != 0;
-            if (!injected && msg is WmKeyDown or WmSysKeyDown)
+            if (code >= 0)
             {
-                // The LL hook has no repeat flag; a key already down is auto-repeat.
-                if (_down.Add(info.VkCode) && !IsModifierKey(info.VkCode))
+                var info = Marshal.PtrToStructure<KbdLlHookStruct>(lParam);
+                int msg = wParam.ToInt32();
+                bool injected = (info.Flags & LlkhfInjected) != 0;
+                if (!injected && msg is WmKeyDown or WmSysKeyDown)
                 {
-                    var id = _table.Match(CurrentModifiers(), (Keys)info.VkCode);
-                    if (id is not null) Pressed?.Invoke(id.Value);
+                    // The LL hook has no repeat flag; a key already down is auto-repeat, unless
+                    // its key-up was lost (e.g. on the secure desktop) and it is really up.
+                    bool isFreshPress = _down.Add(info.VkCode) || !IsDown((int)info.VkCode);
+                    if (isFreshPress && !IsModifierKey(info.VkCode))
+                    {
+                        var id = _table.Match(CurrentModifiers(), (Keys)info.VkCode);
+                        // Post so the callback returns at once; a slow handler past the LL hook
+                        // timeout makes Windows silently remove the hook.
+                        if (id is int matched) _context.Post(_ => Pressed?.Invoke(matched), null);
+                    }
+                }
+                else if (!injected && msg is WmKeyUp or WmSysKeyUp)
+                {
+                    _down.Remove(info.VkCode);
                 }
             }
-            else if (msg is WmKeyUp or WmSysKeyUp)
-            {
-                _down.Remove(info.VkCode);
-            }
+        }
+        catch
+        {
         }
         // Always pass the key on; that is the whole point of this listener.
         return CallNextHookEx(_hook, code, wParam, lParam);
