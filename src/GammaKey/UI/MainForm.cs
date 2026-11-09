@@ -36,6 +36,7 @@ public sealed class MainForm : Form
     {
         _controller = controller;
         Text = "GammaKey";
+        WindowChrome.Apply(this);
         Width = 900;
         Height = 640;
         // Scale the pixel layout with the display so text is not clipped at 125 and 150 percent.

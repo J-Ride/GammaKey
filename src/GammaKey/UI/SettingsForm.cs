@@ -21,6 +21,7 @@ public sealed class SettingsForm : Form
     {
         _controller = controller;
         Text = "GammaKey settings";
+        WindowChrome.Apply(this);
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;

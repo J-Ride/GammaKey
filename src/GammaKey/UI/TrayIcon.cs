@@ -47,11 +47,15 @@ public sealed class TrayIcon : IDisposable
         using var bmp = new Bitmap(32, 32);
         using var g = Graphics.FromImage(bmp);
         g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-        using var back = new SolidBrush(Theme.Panel);
-        g.FillEllipse(back, 1, 1, 30, 30);
+        using var back = new SolidBrush(Theme.Background);
+        g.FillRectangle(back, 0, 0, 32, 32);
         using var pen = new Pen(Theme.Accent, 3f);
-        // A rising curve: the gamma shape.
-        g.DrawBezier(pen, 7, 25, 10, 8, 20, 8, 25, 7);
+        // Crosshair: ring with a gap, plus the four hairs. Reads at 16 px in the tray.
+        g.DrawLine(pen, 16, 2, 16, 30);
+        g.DrawLine(pen, 2, 16, 30, 16);
+        using var hole = new SolidBrush(Theme.Background);
+        g.FillEllipse(hole, 7, 7, 18, 18);
+        g.DrawEllipse(pen, 8, 8, 16, 16);
         return Icon.FromHandle(bmp.GetHicon());
     }
 
