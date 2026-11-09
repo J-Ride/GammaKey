@@ -39,8 +39,13 @@ public sealed class ProfileStore
 
         if (settings is null) return Defaults();
 
+        settings.Profiles ??= new List<Profile>();
+        settings.Profiles.RemoveAll(p => p is null);
+
         foreach (var profile in settings.Profiles)
         {
+            profile.Hotkey ??= "";
+            profile.Name ??= "";
             profile.Values = profile.Values.Clamped();
             profile.Target ??= MonitorTarget.ForPrimary();
             if (string.IsNullOrWhiteSpace(profile.Id)) profile.Id = Guid.NewGuid().ToString("N");

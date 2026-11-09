@@ -84,6 +84,43 @@ public class ProfileStoreTests : IDisposable
     }
 
     [Fact]
+    public void NullProfilesArrayLoadsAsEmptyList()
+    {
+        var path = PathFor("profiles.json");
+        File.WriteAllText(path, """{ "version": 1, "profiles": null }""");
+        var store = new ProfileStore(path);
+
+        var settings = store.Load();
+
+        Assert.NotNull(settings.Profiles);
+        Assert.Empty(settings.Profiles);
+    }
+
+    [Fact]
+    public void NullProfileEntriesAreDropped()
+    {
+        var path = PathFor("profiles.json");
+        File.WriteAllText(path, """{ "version": 1, "profiles": [ null, { "name": "Kept" } ] }""");
+        var store = new ProfileStore(path);
+
+        var p = Assert.Single(store.Load().Profiles);
+
+        Assert.Equal("Kept", p.Name);
+    }
+
+    [Fact]
+    public void NullHotkeyLoadsAsEmptyString()
+    {
+        var path = PathFor("profiles.json");
+        File.WriteAllText(path, """{ "version": 1, "profiles": [ { "name": "A", "hotkey": null } ] }""");
+        var store = new ProfileStore(path);
+
+        var p = Assert.Single(store.Load().Profiles);
+
+        Assert.Equal("", p.Hotkey);
+    }
+
+    [Fact]
     public void SaveLeavesNoTempFileBehind()
     {
         var store = new ProfileStore(PathFor("profiles.json"));
