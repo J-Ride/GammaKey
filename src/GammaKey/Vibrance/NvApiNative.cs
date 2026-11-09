@@ -27,7 +27,7 @@ internal static class NvApiNative
     }
 
     [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
-    [DllImport("nvapi64.dll",EntryPoint = "nvapi_QueryInterface", CallingConvention = CallingConvention.Cdecl)]
+    [DllImport("nvapi64.dll", EntryPoint = "nvapi_QueryInterface", CallingConvention = CallingConvention.Cdecl)]
     private static extern IntPtr QueryInterface(uint id);
 
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
