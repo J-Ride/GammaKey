@@ -1,4 +1,5 @@
 using GammaKey.App;
+using GammaKey.Hotkeys;
 using GammaKey.Models;
 
 namespace GammaKey.UI;
@@ -27,7 +28,6 @@ public sealed class MainForm : Form
     private readonly GkSlider _highlights = new() { Minimum = -100, Maximum = 100, Origin = 0, Width = 320 };
     private readonly GkSlider _vibrance = new() { Minimum = 50, Maximum = 100, Origin = 50, Width = 320 };
     private readonly Dictionary<GkSlider, NumericUpDown> _numbers = new();
-    private Button _applyButton = null!;
 
     private Profile? _editing;
     private bool _loading;
@@ -53,10 +53,6 @@ public sealed class MainForm : Form
 
         BuildLayout();
         Theme.Apply(this);
-        _applyButton.BackColor = Theme.Accent;
-        _applyButton.ForeColor = Theme.Background;
-        _applyButton.FlatAppearance.BorderColor = Theme.Accent;
-        _applyButton.FlatAppearance.MouseOverBackColor = Theme.AccentHover;
         LoadMonitorsIntoTarget();
         LoadSettingsIntoControls();
         RefreshProfileList();
@@ -125,17 +121,14 @@ public sealed class MainForm : Form
         right.Controls.Add(_vibranceNote);
 
         var actions = new FlowLayoutPanel { AutoSize = true, Margin = new Padding(Theme.LabelColumnWidth, Theme.Space2, 0, 0) };
-        _applyButton = Button("Apply", (_, _) => ApplyCurrent());
-        actions.Controls.Add(_applyButton);
-        actions.Controls.Add(Button("Save", (_, _) => SaveCurrent()));
         actions.Controls.Add(Button("Reset", (_, _) => _controller.Reset()));
         right.Controls.Add(actions);
         right.Controls.Add(_status);
         root.Controls.Add(right, 1, 0);
 
-        _nameBox.TextChanged += (_, _) => { if (_editing is not null && !_loading) { _editing.Name = _nameBox.Text; RefreshProfileList(keepSelection: true); } };
-        _hotkeyBox.ComboChanged += (_, _) => { if (_editing is not null && !_loading) { _editing.Hotkey = _hotkeyBox.Combo; RefreshProfileList(keepSelection: true); } };
-        _targetBox.SelectedIndexChanged += (_, _) => { if (_editing is not null && !_loading) _editing.Target = TargetFromCombo(); };
+        _nameBox.TextChanged += (_, _) => { if (_editing is not null && !_loading) { _editing.Name = _nameBox.Text; _controller.Save(); } };
+        _hotkeyBox.ComboChanged += (_, _) => { if (_editing is not null && !_loading) { _editing.Hotkey = _hotkeyBox.Combo; SaveSettingsAndRegister(_hotkeyBox); } };
+        _targetBox.SelectedIndexChanged += (_, _) => { if (_editing is not null && !_loading) { _editing.Target = TargetFromCombo(); _controller.Save(); } };
         _resetHotkeyBox.ComboChanged += (_, _) => { if (!_loading) { _controller.Settings.ResetHotkey = _resetHotkeyBox.Combo; SaveSettingsAndRegister(); } };
         _startWithWindows.CheckedChanged += (_, _) => { if (!_loading) _controller.SetStartWithWindows(_startWithWindows.Checked); };
         _showToast.CheckedChanged += (_, _) => { if (!_loading) { _controller.Settings.ShowToast = _showToast.Checked; _controller.Save(); } };
@@ -212,7 +205,14 @@ public sealed class MainForm : Form
             bar.Value = isGamma ? (int)Math.Round(number.Value * 100) : (int)number.Value;
             _loading = false;
             PushValuesToProfileAndPreview();
+            SaveIfEditing();
         };
+
+        // Saving on every drag tick would write the file many times a second, so save when
+        // the drag or key press ends. A capture loss (Alt+Tab mid-drag) also ends the drag.
+        bar.MouseUp += (_, _) => SaveIfEditing();
+        bar.KeyUp += (_, _) => SaveIfEditing();
+        bar.MouseCaptureChanged += (_, _) => SaveIfEditing();
 
         return FormRow(new Label { Text = label, Font = Theme.Label, ForeColor = Theme.TextMuted }, bar, number);
     }
@@ -314,7 +314,10 @@ public sealed class MainForm : Form
         foreach (var (bar, number) in _numbers)
             number.Value = ReferenceEquals(bar, _gamma) ? bar.Value / 100m : bar.Value;
         _loading = false;
-        _status.Text = "";
+        _hotkeyBox.ForeColor = Theme.TextPrimary;
+        // Clicking a profile is the same as pressing its hotkey: the screen changes at once.
+        var result = _controller.ApplyProfile(_editing);
+        _status.Text = result.Note ?? "";
     }
 
     private ColorValues CurrentValues() => new(_gamma.Value / 100.0, _brightness.Value, _contrast.Value, _shadows.Value, _highlights.Value, _vibrance.Value);
@@ -327,32 +330,31 @@ public sealed class MainForm : Form
         _status.Text = result.Note ?? "";
     }
 
-    private void ApplyCurrent()
+    private void SaveIfEditing()
     {
-        if (_editing is null) return;
-        var result = _controller.ApplyProfile(_editing);
-        _status.Text = result.Note ?? "Applied";
+        if (_editing is not null && !_loading) _controller.Save();
     }
 
-    private void SaveCurrent()
-    {
-        SaveSettingsAndRegister();
-        RefreshProfileList(keepSelection: true);
-        _status.Text = _status.Text.Length == 0 ? "Saved" : _status.Text;
-    }
-
-    private void SaveSettingsAndRegister()
+    private void SaveSettingsAndRegister(HotkeyCaptureBox? changedBox = null)
     {
         _controller.Save();
         var failed = _controller.RegisterHotkeys();
-        _status.Text = failed.Count == 0 ? "" : $"Hotkey already used by another app: {string.Join(", ", failed)}. Pick another.";
+        if (failed.Count > 0)
+        {
+            _status.Text = $"Hotkey already used by another app: {string.Join(", ", failed)}. Pick another.";
+            if (changedBox is not null && _editing is not null && failed.Contains(_editing.Name)) changedBox.ForeColor = Theme.Warning;
+            return;
+        }
+        if (changedBox is not null) changedBox.ForeColor = Theme.TextPrimary;
+        bool plainKey = changedBox is not null && changedBox.Combo.Length > 0 && !HotkeyCombo.HasModifier(changedBox.Combo);
+        _status.Text = plainKey ? HotkeyCombo.NoModifierWarning : "";
     }
 
     private void AddProfile()
     {
         var profile = new Profile();
         _controller.Settings.Profiles.Add(profile);
-        RefreshProfileList();
+        SaveSettingsAndRegister();
         _profileList.SelectedIndex = _controller.Settings.Profiles.Count - 1;
     }
 
@@ -362,7 +364,7 @@ public sealed class MainForm : Form
         var copy = _editing.Clone();
         copy.Name = _editing.Name + " copy";
         _controller.Settings.Profiles.Add(copy);
-        RefreshProfileList();
+        SaveSettingsAndRegister();
         _profileList.SelectedIndex = _controller.Settings.Profiles.Count - 1;
     }
 
@@ -372,7 +374,6 @@ public sealed class MainForm : Form
         var index = _controller.Settings.Profiles.IndexOf(_editing);
         _controller.Settings.Profiles.Remove(_editing);
         SaveSettingsAndRegister();
-        RefreshProfileList();
         if (_profileList.Items.Count > 0) _profileList.SelectedIndex = Math.Min(index, _profileList.Items.Count - 1);
         else { _editing = null; SetEditorEnabled(false); }
     }
