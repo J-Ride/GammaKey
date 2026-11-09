@@ -41,6 +41,7 @@ public readonly record struct HotkeyCombo(uint Modifiers, Keys Key)
 
         var last = parts[^1];
         if (!Enum.TryParse<Keys>(last, ignoreCase: true, out var key)) return false;
+        if ((key & Keys.Modifiers) != 0 || key == Keys.KeyCode || !Enum.IsDefined(key)) return false;
         if (ModifierKeys.Contains(key)) return false;
 
         combo = new HotkeyCombo(modifiers, key);

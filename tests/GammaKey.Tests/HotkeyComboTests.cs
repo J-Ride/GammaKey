@@ -44,6 +44,9 @@ public class HotkeyComboTests
     [InlineData("Ctrl+Shift")]
     [InlineData("Banana")]
     [InlineData("ControlKey")]
+    [InlineData("Control, F9")]
+    [InlineData("Modifiers")]
+    [InlineData("KeyCode")]
     public void RejectsIncompleteOrUnknown(string text)
     {
         Assert.False(HotkeyCombo.TryParse(text, out _));
