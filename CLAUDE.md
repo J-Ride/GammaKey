@@ -6,13 +6,14 @@ Install nothing here; skills and plugins are user scope.
 > Vault: `C:\Dev\Workspace\Vault` | Wiki: `C:\Dev\Workspace\Vault\wiki\projects\GammaKey.md`
 
 ## Commands
-- Build: `[command]`
-- Test: `[command]`
-- Lint: `[command]`
-- Dev: `[command]`
+- Build: `dotnet build`
+- Test: `dotnet test`
+- Lint: `dotnet format --verify-no-changes`
+- Dev: `dotnet run --project src/GammaKey`
+- Release: `.\publish.ps1` (single exe in `publish\`)
 
 ## Stack
-TBD. Run /setupdotclaude from this repo to detect the framework and fill in the commands above.
+C# .NET 8 WinForms, x64, no NuGet beyond xUnit. Spec: docs/superpowers/specs/2026-11-08-gammakey-design.md
 
 ## Architecture
 
