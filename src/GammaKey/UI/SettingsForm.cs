@@ -50,7 +50,7 @@ public sealed class SettingsForm : Form
             stack.Controls.Add(check);
         }
 
-        stack.Controls.Add(new Label { Text = "Reset hotkey", ForeColor = Theme.TextMuted, AutoSize = true, Margin = new Padding(0, Theme.Space3, 0, Theme.Space1) });
+        stack.Controls.Add(new Label { Text = "Restore monitor hotkey", ForeColor = Theme.TextMuted, AutoSize = true, Margin = new Padding(0, Theme.Space3, 0, Theme.Space1) });
         _resetHotkeyBox.Margin = Padding.Empty;
         stack.Controls.Add(_resetHotkeyBox);
 

@@ -18,7 +18,7 @@ public sealed class MainForm : Form
     private readonly TextBox _nameBox = new() { Width = WideInputWidth };
     private readonly HotkeyCaptureBox _hotkeyBox = new() { Width = WideInputWidth };
     private readonly ComboBox _targetBox = new() { Width = WideInputWidth, DropDownStyle = ComboBoxStyle.DropDownList };
-    private readonly Label _status = new() { AutoSize = true, ForeColor = Theme.Warning, MaximumSize = new Size(420, 0), Margin = new Padding(Theme.LabelColumnWidth, Theme.Space1, 0, 0) };
+    private readonly Label _status = new() { AutoSize = true, ForeColor = Theme.Warning, MaximumSize = new Size(420, 0), Margin = new Padding(Theme.LabelColumnWidth, Theme.Space2, 0, 0) };
     private readonly Label _vibranceNote = new() { AutoSize = true, ForeColor = Theme.TextMuted, Font = Theme.Caption, Margin = new Padding(Theme.LabelColumnWidth, 0, 0, Theme.Space1) };
 
     private readonly GkSlider _gamma = new() { Minimum = 30, Maximum = 280, Origin = 100, Width = 320 };
@@ -81,11 +81,12 @@ public sealed class MainForm : Form
         Controls.Add(root);
 
         // Left: profile list, its buttons, then the Settings button. App settings live in a dialog.
-        var left = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 3, Margin = Padding.Empty };
+        var left = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 4, Margin = Padding.Empty };
         left.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         // Explicit rows: a content-sized row holding a Dock=Fill AutoSize panel is circular and
         // collapses to zero height when the form is laid out before the message loop runs.
         left.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        left.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         left.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         left.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         left.Controls.Add(_profileList);
@@ -103,6 +104,12 @@ public sealed class MainForm : Form
         settingsButton.Height = Theme.ControlHeight;
         settingsButton.Margin = new Padding(0, Theme.Space3, 0, 0);
         left.Controls.Add(settingsButton);
+        var restoreButton = Button("Restore monitor", (_, _) => _controller.Reset());
+        restoreButton.AutoSize = false;
+        restoreButton.Dock = DockStyle.Fill;
+        restoreButton.Height = Theme.ControlHeight;
+        restoreButton.Margin = new Padding(0, Theme.Space3, 0, 0);
+        left.Controls.Add(restoreButton);
         root.Controls.Add(left, 0, 0);
 
         // Right: editor
@@ -119,9 +126,6 @@ public sealed class MainForm : Form
         right.Controls.Add(Slider("Vibrance", _vibrance));
         right.Controls.Add(_vibranceNote);
 
-        var actions = new FlowLayoutPanel { AutoSize = true, Margin = new Padding(Theme.LabelColumnWidth, Theme.Space2, 0, 0) };
-        actions.Controls.Add(Button("Reset", (_, _) => _controller.Reset()));
-        right.Controls.Add(actions);
         right.Controls.Add(_status);
         root.Controls.Add(right, 1, 0);
 
