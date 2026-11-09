@@ -86,14 +86,13 @@ public sealed class SettingsForm : Form
     {
         _controller.Save();
         var failed = _controller.RegisterHotkeys();
-        if (failed.Count > 0)
-        {
-            _status.Text = $"Hotkey already used by another app: {string.Join(", ", failed)}. Pick another.";
-            if (failed.Contains("Reset")) _resetHotkeyBox.ForeColor = Theme.Warning;
-            return;
-        }
-        _resetHotkeyBox.ForeColor = Theme.TextPrimary;
-        bool plainKey = _resetHotkeyBox.Combo.Length > 0 && !HotkeyCombo.HasModifier(_resetHotkeyBox.Combo);
-        _status.Text = plainKey ? HotkeyCombo.NoModifierWarning : "";
+        var messages = new List<string>();
+        if (failed.Count > 0) messages.Add($"Hotkey already used by another app: {string.Join(", ", failed)}. Pick another.");
+        // A profile hotkey can still be refused after the Reset key is fixed, so the colour and
+        // the no-modifier warning depend only on the Reset hotkey.
+        bool isRefused = failed.Contains("Reset");
+        _resetHotkeyBox.ForeColor = isRefused ? Theme.Warning : Theme.TextPrimary;
+        if (!isRefused && _resetHotkeyBox.Combo.Length > 0 && !HotkeyCombo.HasModifier(_resetHotkeyBox.Combo)) messages.Add(HotkeyCombo.NoModifierWarning);
+        _status.Text = string.Join(" ", messages);
     }
 }
