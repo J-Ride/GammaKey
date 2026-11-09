@@ -8,6 +8,8 @@ public readonly record struct HotkeyCombo(uint Modifiers, Keys Key)
     public const uint ModWin = 0x0008;
     public const uint ModNoRepeat = 0x4000;
 
+    public const string NoModifierWarning = "This key will be blocked in every app while GammaKey runs. Add Ctrl or Alt to be safe.";
+
     private static readonly Keys[] ModifierKeys =
     {
         Keys.ControlKey, Keys.LControlKey, Keys.RControlKey, Keys.Control,
@@ -47,6 +49,8 @@ public readonly record struct HotkeyCombo(uint Modifiers, Keys Key)
         combo = new HotkeyCombo(modifiers, key);
         return true;
     }
+
+    public static bool HasModifier(string text) => TryParse(text, out var combo) && combo.Modifiers != 0;
 
     public override string ToString()
     {

@@ -11,7 +11,7 @@ Made for Escape from Tarkov's dark corners, works anywhere on the desktop.
 2. Double-click it. Windows SmartScreen may warn because the exe is unsigned: click **More info**, then **Run anyway**.
 3. An icon appears by the clock. Left-click it to open the window.
 4. Pick a profile, drag the sliders until the screen looks right, click the **Hotkey** box and press your key combo, then **Save**.
-5. Set a **Reset hotkey** in Settings so you can always get back to normal.
+5. Set a **Restore monitor hotkey** in Settings so you can always get back to normal.
 
 Profiles live in `profiles.json`. Copy that file to a friend's folder to share your setup.
 
@@ -19,16 +19,27 @@ Profiles live in `profiles.json`. Copy that file to a friend's folder to share y
 
 GammaKey changes the colour curve your graphics card applies to the whole screen, the same control the
 NVIDIA Control Panel's "Adjust desktop color settings" page uses. It talks only to Windows and the graphics
-driver. It never opens, reads, hooks or injects anything into a game. It runs without administrator rights.
+driver. It never opens, reads, hooks or injects anything into a game (the optional pass-through setting adds a system-wide keyboard hook; see Games). It runs without administrator rights.
 
 ## Notes
 
 - **HDR.** Tune the sliders with HDR on if you game with HDR on; what you see is what is saved.
 - **Vibrance** needs an NVIDIA card. On other cards the slider is greyed out and everything else works.
 - **Flicker in Discord or Chrome** with a curve active is a known NVIDIA driver quirk with custom curves.
-  Update the driver, or press Reset while not gaming.
-- **Original settings** are saved to `baseline.json` on start and restored on Reset, on Quit, and on the
+  Update the driver, or press Restore monitor while not gaming.
+- **Original settings** are saved to `baseline.json` on start and restored when you press Restore monitor, on Quit, and on the
   next start if GammaKey was closed uncleanly.
+
+## Games
+
+Run games in borderless windowed mode. In exclusive fullscreen many games write their own
+gamma curve when they gain focus, which overwrites GammaKey until the next hotkey press.
+
+Hotkeys swallow their key by default, so a profile on `Numpad1` stops `1` typing anywhere.
+Settings has "Let hotkeys pass through to other apps", which uses a system-wide keyboard
+hook instead. Some anti-cheat systems flag that; the safer choice is a Ctrl or Alt modifier.
+Pass-through does not see keys sent by macro software or a Stream Deck, and gets nothing while
+an elevated (admin) window has focus.
 
 ## Build from source
 

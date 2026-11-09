@@ -1,5 +1,9 @@
+using System.Text.Json;
+
 using GammaKey.App;
+using GammaKey.Hotkeys;
 using GammaKey.Models;
+using GammaKey.Storage;
 
 namespace GammaKey.UI;
 
@@ -9,15 +13,12 @@ public sealed class MainForm : Form
     private readonly ListBox _profileList = new() { Dock = DockStyle.Fill, IntegralHeight = false, Margin = Padding.Empty };
     // Slider (320) + gap + readout (70), so the inputs share the slider rows' right edge.
     private const int WideInputWidth = 320 + Theme.Space3 + 70;
+    private const string ProfileFileFilter = "GammaKey profiles (*.json)|*.json";
 
     private readonly TextBox _nameBox = new() { Width = WideInputWidth };
     private readonly HotkeyCaptureBox _hotkeyBox = new() { Width = WideInputWidth };
     private readonly ComboBox _targetBox = new() { Width = WideInputWidth, DropDownStyle = ComboBoxStyle.DropDownList };
-    private readonly HotkeyCaptureBox _resetHotkeyBox = new() { Width = 260 };
-    private readonly CheckBox _startWithWindows = new() { Text = "Start with Windows", AutoSize = true };
-    private readonly CheckBox _showToast = new() { Text = "Show profile name on hotkey", AutoSize = true };
-    private readonly CheckBox _guard = new() { Text = "Re-apply if Windows resets the curve", AutoSize = true };
-    private readonly Label _status = new() { AutoSize = true, ForeColor = Theme.Warning, MaximumSize = new Size(420, 0), Margin = new Padding(Theme.LabelColumnWidth, Theme.Space1, 0, 0) };
+    private readonly Label _status = new() { AutoSize = true, ForeColor = Theme.Warning, MaximumSize = new Size(420, 0), Margin = new Padding(Theme.LabelColumnWidth, Theme.Space2, 0, 0) };
     private readonly Label _vibranceNote = new() { AutoSize = true, ForeColor = Theme.TextMuted, Font = Theme.Caption, Margin = new Padding(Theme.LabelColumnWidth, 0, 0, Theme.Space1) };
 
     private readonly GkSlider _gamma = new() { Minimum = 30, Maximum = 280, Origin = 100, Width = 320 };
@@ -27,7 +28,6 @@ public sealed class MainForm : Form
     private readonly GkSlider _highlights = new() { Minimum = -100, Maximum = 100, Origin = 0, Width = 320 };
     private readonly GkSlider _vibrance = new() { Minimum = 50, Maximum = 100, Origin = 50, Width = 320 };
     private readonly Dictionary<GkSlider, NumericUpDown> _numbers = new();
-    private Button _applyButton = null!;
 
     private Profile? _editing;
     private bool _loading;
@@ -47,20 +47,22 @@ public sealed class MainForm : Form
         _controller.SettingsChanged += () =>
         {
             if (IsDisposed) return;
-            LoadSettingsIntoControls();
             RefreshProfileList(keepSelection: true);
         };
 
         BuildLayout();
         Theme.Apply(this);
-        _applyButton.BackColor = Theme.Accent;
-        _applyButton.ForeColor = Theme.Background;
-        _applyButton.FlatAppearance.BorderColor = Theme.Accent;
-        _applyButton.FlatAppearance.MouseOverBackColor = Theme.AccentHover;
         LoadMonitorsIntoTarget();
-        LoadSettingsIntoControls();
         RefreshProfileList();
-        if (_profileList.Items.Count > 0) _profileList.SelectedIndex = 0;
+        if (_profileList.Items.Count > 0)
+        {
+            // The form is built at every launch, even when it stays in the tray, and launch
+            // must not change the screen: select under _loading, then load without applying.
+            _loading = true;
+            _profileList.SelectedIndex = 0;
+            _loading = false;
+            LoadSelectedProfile(apply: false);
+        }
         SetEditorEnabled(_editing is not null);
     }
 
@@ -78,36 +80,36 @@ public sealed class MainForm : Form
         root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         Controls.Add(root);
 
-        // Left: profile list, its buttons, then app settings. Settings sit here because the
-        // editor column fills the 640 px window height on its own.
-        var left = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, Margin = Padding.Empty };
+        // Left: profile list, its buttons, then the Settings and Restore monitor buttons. App settings live in a dialog.
+        var left = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 4, Margin = Padding.Empty };
         left.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        // Explicit rows: a content-sized row holding a Dock=Fill AutoSize panel is circular and
+        // collapses to zero height when the form is laid out before the message loop runs.
         left.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        left.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        left.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        left.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         left.Controls.Add(_profileList);
-        var leftButtons = new TableLayoutPanel { Dock = DockStyle.Fill, Height = Theme.ControlHeight, ColumnCount = 3, RowCount = 1, Margin = new Padding(0, Theme.Space3, 0, 0) };
-        leftButtons.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        string[] names = ["Add", "Duplicate", "Delete"];
-        EventHandler[] handlers = [(_, _) => AddProfile(), (_, _) => DuplicateProfile(), (_, _) => DeleteProfile()];
-        for (int i = 0; i < names.Length; i++)
-        {
-            leftButtons.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f / names.Length));
-            var button = Button(names[i], handlers[i]);
-            button.AutoSize = false;
-            button.Dock = DockStyle.Fill;
-            button.Margin = new Padding(0, 0, i < names.Length - 1 ? Theme.Space2 : 0, 0);
-            leftButtons.Controls.Add(button, i, 0);
-        }
+        // A wrapping row so five buttons fit the 280 px column without clipping any label.
+        var leftButtons = new FlowLayoutPanel { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, WrapContents = true, Anchor = AnchorStyles.Left | AnchorStyles.Right, Margin = new Padding(0, Theme.Space3, 0, 0) };
+        leftButtons.Controls.Add(Button("Add", (_, _) => AddProfile()));
+        leftButtons.Controls.Add(Button("Duplicate", (_, _) => DuplicateProfile()));
+        leftButtons.Controls.Add(Button("Delete", (_, _) => DeleteProfile()));
+        leftButtons.Controls.Add(Button("Import", (_, _) => ImportProfiles()));
+        leftButtons.Controls.Add(Button("Export", (_, _) => ExportProfiles()));
         left.Controls.Add(leftButtons);
-        left.Controls.Add(new Label { Text = "Settings", Font = Theme.Title, AutoSize = true, Margin = new Padding(0, Theme.Space6, 0, Theme.Space2) });
-        left.Controls.Add(new Label { Text = "Reset hotkey", ForeColor = Theme.TextMuted, AutoSize = true, Margin = new Padding(0, 0, 0, Theme.Space1) });
-        _resetHotkeyBox.Dock = DockStyle.Fill;
-        _resetHotkeyBox.Margin = new Padding(0, 0, 0, Theme.Space2);
-        left.Controls.Add(_resetHotkeyBox);
-        foreach (var check in new[] { _startWithWindows, _showToast, _guard })
-        {
-            check.Margin = new Padding(0, 2, 0, 2);
-            left.Controls.Add(check);
-        }
+        var settingsButton = Button("Settings", (_, _) => OpenSettings());
+        settingsButton.AutoSize = false;
+        settingsButton.Dock = DockStyle.Fill;
+        settingsButton.Height = Theme.ControlHeight;
+        settingsButton.Margin = new Padding(0, Theme.Space3, 0, 0);
+        left.Controls.Add(settingsButton);
+        var restoreButton = Button("Restore monitor", (_, _) => _controller.Reset());
+        restoreButton.AutoSize = false;
+        restoreButton.Dock = DockStyle.Fill;
+        restoreButton.Height = Theme.ControlHeight;
+        restoreButton.Margin = new Padding(0, Theme.Space3, 0, 0);
+        left.Controls.Add(restoreButton);
         root.Controls.Add(left, 0, 0);
 
         // Right: editor
@@ -124,22 +126,12 @@ public sealed class MainForm : Form
         right.Controls.Add(Slider("Vibrance", _vibrance));
         right.Controls.Add(_vibranceNote);
 
-        var actions = new FlowLayoutPanel { AutoSize = true, Margin = new Padding(Theme.LabelColumnWidth, Theme.Space2, 0, 0) };
-        _applyButton = Button("Apply", (_, _) => ApplyCurrent());
-        actions.Controls.Add(_applyButton);
-        actions.Controls.Add(Button("Save", (_, _) => SaveCurrent()));
-        actions.Controls.Add(Button("Reset", (_, _) => _controller.Reset()));
-        right.Controls.Add(actions);
         right.Controls.Add(_status);
         root.Controls.Add(right, 1, 0);
 
-        _nameBox.TextChanged += (_, _) => { if (_editing is not null && !_loading) { _editing.Name = _nameBox.Text; RefreshProfileList(keepSelection: true); } };
-        _hotkeyBox.ComboChanged += (_, _) => { if (_editing is not null && !_loading) { _editing.Hotkey = _hotkeyBox.Combo; RefreshProfileList(keepSelection: true); } };
-        _targetBox.SelectedIndexChanged += (_, _) => { if (_editing is not null && !_loading) _editing.Target = TargetFromCombo(); };
-        _resetHotkeyBox.ComboChanged += (_, _) => { if (!_loading) { _controller.Settings.ResetHotkey = _resetHotkeyBox.Combo; SaveSettingsAndRegister(); } };
-        _startWithWindows.CheckedChanged += (_, _) => { if (!_loading) _controller.SetStartWithWindows(_startWithWindows.Checked); };
-        _showToast.CheckedChanged += (_, _) => { if (!_loading) { _controller.Settings.ShowToast = _showToast.Checked; _controller.Save(); } };
-        _guard.CheckedChanged += (_, _) => { if (!_loading) { _controller.Settings.GuardEnabled = _guard.Checked; _controller.Save(); } };
+        _nameBox.TextChanged += (_, _) => { if (_editing is not null && !_loading) { _editing.Name = _nameBox.Text; _controller.Save(); } };
+        _hotkeyBox.ComboChanged += (_, _) => { if (_editing is not null && !_loading) { _editing.Hotkey = _hotkeyBox.Combo; SaveSettingsAndRegister(_hotkeyBox); } };
+        _targetBox.SelectedIndexChanged += (_, _) => { if (_editing is not null && !_loading) { _editing.Target = TargetFromCombo(); _controller.Save(); } };
         _profileList.SelectedIndexChanged += (_, _) => LoadSelectedProfile();
 
         if (!_controller.Vibrance.IsAvailable)
@@ -212,7 +204,15 @@ public sealed class MainForm : Form
             bar.Value = isGamma ? (int)Math.Round(number.Value * 100) : (int)number.Value;
             _loading = false;
             PushValuesToProfileAndPreview();
+            SaveIfEditing();
         };
+
+        // Saving on every drag tick would write the file many times a second, so save when
+        // the drag or key press ends. A capture loss (Alt+Tab mid-drag) also ends the drag.
+        bar.MouseUp += (_, _) => SaveIfEditing();
+        bar.KeyUp += (_, _) => SaveIfEditing();
+        bar.MouseCaptureChanged += (_, _) => SaveIfEditing();
+        bar.MouseWheel += (_, _) => SaveIfEditing();
 
         return FormRow(new Label { Text = label, Font = Theme.Label, ForeColor = Theme.TextMuted }, bar, number);
     }
@@ -271,16 +271,6 @@ public sealed class MainForm : Form
         }
     }
 
-    private void LoadSettingsIntoControls()
-    {
-        _loading = true;
-        _resetHotkeyBox.Combo = _controller.Settings.ResetHotkey;
-        _startWithWindows.Checked = _controller.Settings.StartWithWindows;
-        _showToast.Checked = _controller.Settings.ShowToast;
-        _guard.Checked = _controller.Settings.GuardEnabled;
-        _loading = false;
-    }
-
     private void RefreshProfileList(bool keepSelection = false)
     {
         var selected = _profileList.SelectedIndex;
@@ -292,7 +282,7 @@ public sealed class MainForm : Form
         _loading = false;
     }
 
-    private void LoadSelectedProfile()
+    private void LoadSelectedProfile(bool apply = true)
     {
         if (_loading) return;
         var index = _profileList.SelectedIndex;
@@ -314,7 +304,11 @@ public sealed class MainForm : Form
         foreach (var (bar, number) in _numbers)
             number.Value = ReferenceEquals(bar, _gamma) ? bar.Value / 100m : bar.Value;
         _loading = false;
-        _status.Text = "";
+        _hotkeyBox.ForeColor = Theme.TextPrimary;
+        if (!apply) return;
+        // Clicking a profile is the same as pressing its hotkey: the screen changes at once.
+        var result = _controller.ApplyProfile(_editing);
+        _status.Text = result.Note ?? "";
     }
 
     private ColorValues CurrentValues() => new(_gamma.Value / 100.0, _brightness.Value, _contrast.Value, _shadows.Value, _highlights.Value, _vibrance.Value);
@@ -327,32 +321,33 @@ public sealed class MainForm : Form
         _status.Text = result.Note ?? "";
     }
 
-    private void ApplyCurrent()
+    private void SaveIfEditing()
     {
-        if (_editing is null) return;
-        var result = _controller.ApplyProfile(_editing);
-        _status.Text = result.Note ?? "Applied";
+        if (_editing is not null && !_loading) _controller.Save();
     }
 
-    private void SaveCurrent()
-    {
-        SaveSettingsAndRegister();
-        RefreshProfileList(keepSelection: true);
-        _status.Text = _status.Text.Length == 0 ? "Saved" : _status.Text;
-    }
-
-    private void SaveSettingsAndRegister()
+    private void SaveSettingsAndRegister(HotkeyCaptureBox? changedBox = null)
     {
         _controller.Save();
         var failed = _controller.RegisterHotkeys();
-        _status.Text = failed.Count == 0 ? "" : $"Hotkey already used by another app: {string.Join(", ", failed)}. Pick another.";
+        var messages = new List<string>();
+        if (failed.Count > 0) messages.Add($"Hotkey already used by another app: {string.Join(", ", failed)}. Pick another.");
+        if (changedBox is not null)
+        {
+            // Another profile can still be refused after this one is fixed, so the colour and
+            // the no-modifier warning depend only on the edited profile.
+            bool isRefused = _editing is not null && failed.Contains(_editing.Name);
+            changedBox.ForeColor = isRefused ? Theme.Warning : Theme.TextPrimary;
+            if (!isRefused && changedBox.Combo.Length > 0 && !HotkeyCombo.HasModifier(changedBox.Combo) && !_controller.Settings.HotkeyPassthrough) messages.Add(HotkeyCombo.NoModifierWarning);
+        }
+        _status.Text = string.Join(" ", messages);
     }
 
     private void AddProfile()
     {
         var profile = new Profile();
         _controller.Settings.Profiles.Add(profile);
-        RefreshProfileList();
+        SaveSettingsAndRegister();
         _profileList.SelectedIndex = _controller.Settings.Profiles.Count - 1;
     }
 
@@ -362,7 +357,7 @@ public sealed class MainForm : Form
         var copy = _editing.Clone();
         copy.Name = _editing.Name + " copy";
         _controller.Settings.Profiles.Add(copy);
-        RefreshProfileList();
+        SaveSettingsAndRegister();
         _profileList.SelectedIndex = _controller.Settings.Profiles.Count - 1;
     }
 
@@ -372,9 +367,65 @@ public sealed class MainForm : Form
         var index = _controller.Settings.Profiles.IndexOf(_editing);
         _controller.Settings.Profiles.Remove(_editing);
         SaveSettingsAndRegister();
-        RefreshProfileList();
-        if (_profileList.Items.Count > 0) _profileList.SelectedIndex = Math.Min(index, _profileList.Items.Count - 1);
+        if (_profileList.Items.Count > 0)
+        {
+            // The save refreshes the list and keeps the old index. When the new index is the
+            // same, the list raises no SelectedIndexChanged, so the editor is rebound here.
+            _loading = true;
+            _profileList.SelectedIndex = Math.Min(index, _profileList.Items.Count - 1);
+            _loading = false;
+            LoadSelectedProfile();
+        }
         else { _editing = null; SetEditorEnabled(false); }
+    }
+
+    private void ExportProfiles()
+    {
+        using var dialog = new SaveFileDialog { Filter = ProfileFileFilter, FileName = "GammaKey-profiles.json", DefaultExt = "json" };
+        if (dialog.ShowDialog(this) != DialogResult.OK) return;
+        try
+        {
+            // Same shape as profiles.json, so an export and a copied profiles.json both import.
+            File.WriteAllText(dialog.FileName, JsonSerializer.Serialize(_controller.Settings, ProfileStore.JsonOptions));
+            _status.Text = $"Exported {_controller.Settings.Profiles.Count} profiles.";
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            _status.Text = "Could not write that file.";
+        }
+    }
+
+    private void ImportProfiles()
+    {
+        using var dialog = new OpenFileDialog { Filter = ProfileFileFilter };
+        if (dialog.ShowDialog(this) != DialogResult.OK) return;
+
+        AppSettings? incoming = null;
+        try
+        {
+            incoming = ProfileStore.TryParse(File.ReadAllText(dialog.FileName));
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            // An unreadable file gets the same "Could not read" message as bad JSON, below.
+        }
+        if (incoming is null || incoming.Profiles.Count == 0)
+        {
+            _status.Text = "Could not read that file. Is it a GammaKey profiles file?";
+            return;
+        }
+
+        var result = ProfileImport.Merge(_controller.Settings.Profiles, incoming.Profiles, _controller.Settings.ResetHotkey);
+        int firstNew = _controller.Settings.Profiles.Count;
+        _controller.Settings.Profiles.AddRange(result.Added);
+        SaveSettingsAndRegister();
+        _profileList.SelectedIndex = firstNew;
+        _status.Text = result.HotkeysCleared switch
+        {
+            0 => $"Imported {result.Added.Count} profiles.",
+            1 => $"Imported {result.Added.Count} profiles. 1 hotkey cleared because it was in use.",
+            var k => $"Imported {result.Added.Count} profiles. {k} hotkeys cleared because they were in use.",
+        };
     }
 
     private void OnFormClosing(object? sender, FormClosingEventArgs e)
@@ -385,5 +436,11 @@ public sealed class MainForm : Form
             e.Cancel = true;
             Hide();
         }
+    }
+
+    private void OpenSettings()
+    {
+        using var dialog = new SettingsForm(_controller);
+        dialog.ShowDialog(this);
     }
 }

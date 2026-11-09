@@ -26,20 +26,23 @@ public sealed class HotkeyCaptureBox : TextBox
         }
     }
 
-    protected override bool IsInputKey(Keys keyData) => keyData is not (Keys.Tab or (Keys.Tab | Keys.Shift));
+    // Every edit auto-saves, so Escape must not clear a hotkey; it goes to the form so a
+    // dialog's CancelButton still closes it.
+    protected override bool IsInputKey(Keys keyData) =>
+        keyData is not (Keys.Tab or (Keys.Tab | Keys.Shift)) && (keyData & Keys.KeyCode) != Keys.Escape;
 
     protected override void OnKeyDown(KeyEventArgs e)
     {
         e.Handled = true;
         e.SuppressKeyPress = true;
 
-        if (e.KeyCode is Keys.Back or Keys.Delete or Keys.Escape)
+        if (e.KeyCode is Keys.Back or Keys.Delete)
         {
             SetCombo("");
             return;
         }
 
-        if (e.KeyCode is Keys.ControlKey or Keys.ShiftKey or Keys.Menu or Keys.LWin or Keys.RWin) return;
+        if (e.KeyCode is Keys.ControlKey or Keys.ShiftKey or Keys.Menu or Keys.LWin or Keys.RWin or Keys.Escape) return;
 
         uint mods = 0;
         if (e.Control) mods |= HotkeyCombo.ModControl;

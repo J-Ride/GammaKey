@@ -51,4 +51,22 @@ public class HotkeyComboTests
     {
         Assert.False(HotkeyCombo.TryParse(text, out _));
     }
+
+    [Fact]
+    public void HasModifierIsTrueWithCtrl()
+    {
+        Assert.True(HotkeyCombo.HasModifier("Ctrl+D1"));
+    }
+
+    [Fact]
+    public void HasModifierIsFalseForPlainKey()
+    {
+        Assert.False(HotkeyCombo.HasModifier("D1"));
+    }
+
+    [Fact]
+    public void HasModifierIsFalseForEmptyText()
+    {
+        Assert.False(HotkeyCombo.HasModifier(""));
+    }
 }

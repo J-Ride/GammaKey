@@ -84,6 +84,30 @@ public class ProfileStoreTests : IDisposable
     }
 
     [Fact]
+    public void LiteralNullFileKeepsBackup()
+    {
+        var path = PathFor("profiles.json");
+        File.WriteAllText(path, "null");
+        var store = new ProfileStore(path);
+
+        store.Load();
+
+        Assert.True(File.Exists(path + ".corrupt"));
+    }
+
+    [Fact]
+    public void LiteralNullFileFallsBackToDefaults()
+    {
+        var path = PathFor("profiles.json");
+        File.WriteAllText(path, "null");
+        var store = new ProfileStore(path);
+
+        var settings = store.Load();
+
+        Assert.Equal(new[] { "Dark Room", "Bright Outdoors", "Normal" }, settings.Profiles.Select(p => p.Name));
+    }
+
+    [Fact]
     public void NullProfilesArrayLoadsAsEmptyList()
     {
         var path = PathFor("profiles.json");
@@ -128,5 +152,58 @@ public class ProfileStoreTests : IDisposable
         store.Save(ProfileStore.Defaults());
 
         Assert.Single(Directory.GetFiles(_dir));
+    }
+
+    [Fact]
+    public void ShowWindowOnLaunchRoundTrips()
+    {
+        var store = new ProfileStore(PathFor("profiles.json"));
+        store.Save(new AppSettings { ShowWindowOnLaunch = true });
+
+        Assert.True(store.Load().ShowWindowOnLaunch);
+    }
+
+    [Fact]
+    public void FileWithoutShowWindowOnLaunchLoadsAsFalse()
+    {
+        var path = PathFor("profiles.json");
+        File.WriteAllText(path, """{ "version": 1, "profiles": [] }""");
+
+        Assert.False(new ProfileStore(path).Load().ShowWindowOnLaunch);
+    }
+
+    [Fact]
+    public void HotkeyPassthroughRoundTrips()
+    {
+        var store = new ProfileStore(PathFor("profiles.json"));
+        store.Save(new AppSettings { HotkeyPassthrough = true });
+
+        Assert.True(store.Load().HotkeyPassthrough);
+    }
+
+    [Fact]
+    public void FileWithoutHotkeyPassthroughLoadsAsFalse()
+    {
+        var path = PathFor("profiles.json");
+        File.WriteAllText(path, """{ "version": 1, "profiles": [] }""");
+
+        Assert.False(new ProfileStore(path).Load().HotkeyPassthrough);
+    }
+
+    [Fact]
+    public void TryParseReturnsNullForInvalidJson()
+    {
+        Assert.Null(ProfileStore.TryParse("{ not json"));
+    }
+
+    [Fact]
+    public void TryParseClampsAndFillsDefaults()
+    {
+        var settings = ProfileStore.TryParse("""{ "profiles": [ { "name": "Wild", "gamma": 9.0, "hotkey": null } ] }""");
+
+        var p = Assert.Single(settings!.Profiles);
+        Assert.Equal(2.8, p.Values.Gamma);
+        Assert.Equal("", p.Hotkey);
+        Assert.False(string.IsNullOrEmpty(p.Id));
     }
 }

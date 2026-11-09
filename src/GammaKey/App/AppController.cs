@@ -14,7 +14,7 @@ public sealed class AppController : IDisposable
 
     private readonly ProfileStore _profileStore;
     private readonly BaselineStore _baselineStore;
-    private readonly HotkeyListener _hotkeys = new();
+    private IHotkeyListener _hotkeys;
     private readonly System.Windows.Forms.Timer _guard = new() { Interval = GuardIntervalMs };
     private readonly Dictionary<int, string> _profileIdsByHotkeyId = new();
     private Baseline _baseline = new();
@@ -35,6 +35,11 @@ public sealed class AppController : IDisposable
         _profileStore = new ProfileStore(Path.Combine(baseDirectory, "profiles.json"));
         _baselineStore = new BaselineStore(Path.Combine(baseDirectory, "baseline.json"));
         Settings = _profileStore.Load();
+        _hotkeys = CreateListener(Settings.HotkeyPassthrough);
+        // Memory only, no Save: the saved choice stays on so the next launch tries the hook
+        // again, while the Settings checkbox shows the mode that is really running.
+        if (Settings.HotkeyPassthrough && _hotkeys is not KeyboardHookListener)
+            Settings.HotkeyPassthrough = false;
         _hotkeys.Pressed += OnHotkeyPressed;
         _guard.Tick += (_, _) => { if (Settings.GuardEnabled) Display.ReapplyIfCleared(); };
     }
@@ -99,6 +104,11 @@ public sealed class AppController : IDisposable
     public ApplyResult Preview(ColorValues values, MonitorTarget target)
     {
         var monitors = Display.ResolveTargets(target, out var note);
+        // A profile owns the whole desk: monitors it does not target go back to original, or they
+        // would keep the last curve written to them for ever.
+        var others = DisplayEngine.OtherDevices(Display.GetMonitors(), monitors);
+        Display.RestoreBaseline(_baseline, others);
+        if (Vibrance.IsAvailable) Vibrance.RestoreBaseline(_baseline, others);
         var result = Display.Apply(values, monitors);
         if (Vibrance.IsAvailable)
             foreach (var monitor in monitors) Vibrance.SetSlider(monitor.DeviceName, values.Vibrance);
@@ -130,6 +140,34 @@ public sealed class AppController : IDisposable
         StartupRegistration.Set(on);
         Settings.StartWithWindows = on;
         Save();
+    }
+
+    private static IHotkeyListener CreateListener(bool passthrough)
+    {
+        if (!passthrough) return new HotkeyListener();
+        var hook = new KeyboardHookListener();
+        if (hook.IsInstalled) return hook;
+        // A hook that failed to install would leave every hotkey dead, so use normal mode.
+        hook.Dispose();
+        return new HotkeyListener();
+    }
+
+    // Returns true when the requested mode is active afterwards.
+    public bool SetHotkeyPassthrough(bool on)
+    {
+        if (Settings.HotkeyPassthrough == on) return true;
+        _hotkeys.Pressed -= OnHotkeyPressed;
+        _hotkeys.Dispose();
+        _hotkeys = CreateListener(on);
+        _hotkeys.Pressed += OnHotkeyPressed;
+        bool isActive = (_hotkeys is KeyboardHookListener) == on;
+        if (isActive)
+        {
+            Settings.HotkeyPassthrough = on;
+            Save();
+        }
+        RegisterHotkeys();
+        return isActive;
     }
 
     private bool _isShutDown;

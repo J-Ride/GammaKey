@@ -22,6 +22,14 @@ internal static class Program
         controller.Start();
         var mainForm = new MainForm(controller);
         using var tray = new TrayIcon(controller, mainForm);
+        if (controller.Settings.ShowWindowOnLaunch)
+        {
+            // Showing before Application.Run skips the normal DPI and layout pass and collapses
+            // the auto-sized rows; Idle fires once the loop is up.
+            EventHandler? showOnce = null;
+            showOnce = (_, _) => { Application.Idle -= showOnce; mainForm.ShowAndFocus(); };
+            Application.Idle += showOnce;
+        }
         Application.ApplicationExit += (_, _) => controller.Shutdown();
 
         Application.Run();

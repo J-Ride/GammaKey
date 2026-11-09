@@ -89,6 +89,17 @@ public sealed class VibranceEngine
             SetRaw(device, level);
     }
 
+    public void RestoreBaseline(Baseline from, IEnumerable<string> deviceNames)
+    {
+        foreach (var deviceName in deviceNames)
+        {
+            // Baseline.VibranceLevels is case-sensitive but device names are compared ignoring
+            // case everywhere else, so a casing difference must not skip the restore.
+            var key = from.VibranceLevels.Keys.FirstOrDefault(k => StringComparer.OrdinalIgnoreCase.Equals(k, deviceName));
+            if (key is not null) SetRaw(deviceName, from.VibranceLevels[key]);
+        }
+    }
+
     private void RefreshHandles()
     {
         _handlesByDevice.Clear();
