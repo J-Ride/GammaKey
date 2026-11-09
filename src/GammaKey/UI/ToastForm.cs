@@ -15,7 +15,7 @@ public sealed class ToastForm : Form
         ShowInTaskbar = false;
         TopMost = true;
         StartPosition = FormStartPosition.Manual;
-        BackColor = Theme.SurfaceRaised;
+        BackColor = Theme.Panel;
         Padding = new Padding(1);
         _label.ForeColor = Theme.TextPrimary;
         _label.Font = Theme.Title;
@@ -52,7 +52,7 @@ public sealed class ToastForm : Form
     protected override void OnPaint(PaintEventArgs e)
     {
         base.OnPaint(e);
-        using var pen = new Pen(Theme.Border);
+        using var pen = new Pen(Theme.LineStrong);
         e.Graphics.DrawRectangle(pen, 0, 0, Width - 1, Height - 1);
     }
 

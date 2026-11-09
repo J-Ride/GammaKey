@@ -47,7 +47,7 @@ public sealed class TrayIcon : IDisposable
         using var bmp = new Bitmap(32, 32);
         using var g = Graphics.FromImage(bmp);
         g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-        using var back = new SolidBrush(Theme.SurfaceRaised);
+        using var back = new SolidBrush(Theme.Panel);
         g.FillEllipse(back, 1, 1, 30, 30);
         using var pen = new Pen(Theme.Accent, 3f);
         // A rising curve: the gamma shape.

@@ -59,40 +59,27 @@ public sealed class GkSlider : Control
         g.Clear(Parent?.BackColor ?? Theme.Background);
 
         var track = TrackRect;
-        using var trackBrush = new SolidBrush(Enabled ? Theme.Border : Theme.Disabled);
-        FillRounded(g, trackBrush, track, track.Height / 2);
+        using var trackBrush = new SolidBrush(Enabled ? Theme.Raised : Theme.TextDim);
+        Theme.FillRounded(g, trackBrush, track, track.Height / 2);
 
         int originX = ValueToX(Math.Clamp(Origin, _minimum, _maximum));
         int valueX = ValueToX(_value);
         var fill = Rectangle.FromLTRB(Math.Min(originX, valueX), track.Top, Math.Max(originX, valueX), track.Bottom);
         if (fill.Width > 0)
         {
-            using var fillBrush = new SolidBrush(Enabled ? Theme.Accent : Theme.Disabled);
-            FillRounded(g, fillBrush, fill, track.Height / 2);
+            using var fillBrush = new SolidBrush(Enabled ? Theme.Accent : Theme.TextDim);
+            Theme.FillRounded(g, fillBrush, fill, track.Height / 2);
         }
 
         int thumb = Theme.SliderThumbSize;
         var thumbRect = new Rectangle(valueX - thumb / 2, (Height - thumb) / 2, thumb, thumb);
-        using var thumbBrush = new SolidBrush(Enabled ? (_dragging ? Theme.AccentHover : Theme.TextPrimary) : Theme.Disabled);
+        using var thumbBrush = new SolidBrush(Enabled ? (_dragging ? Theme.Accent : Theme.TextPrimary) : Theme.TextDim);
         g.FillEllipse(thumbBrush, thumbRect);
         if (Focused && Enabled)
         {
-            using var focus = new Pen(Theme.FocusRing, 2f);
+            using var focus = new Pen(Theme.Accent, 2f);
             g.DrawEllipse(focus, Rectangle.Inflate(thumbRect, 3, 3));
         }
-    }
-
-    private static void FillRounded(Graphics g, Brush brush, Rectangle r, int radius)
-    {
-        if (r.Width <= 0 || r.Height <= 0) return;
-        using var path = new System.Drawing.Drawing2D.GraphicsPath();
-        int d = Math.Max(1, radius * 2);
-        path.AddArc(r.Left, r.Top, d, d, 180, 90);
-        path.AddArc(r.Right - d, r.Top, d, d, 270, 90);
-        path.AddArc(r.Right - d, r.Bottom - d, d, d, 0, 90);
-        path.AddArc(r.Left, r.Bottom - d, d, d, 90, 90);
-        path.CloseFigure();
-        g.FillPath(brush, path);
     }
 
     protected override void OnMouseDown(MouseEventArgs e)

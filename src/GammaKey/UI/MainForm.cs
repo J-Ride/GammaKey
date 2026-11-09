@@ -178,7 +178,7 @@ public sealed class MainForm : Form
             Minimum = bar.Minimum,
             Maximum = bar.Maximum,
             Width = 70,
-            Font = Theme.Value,
+            Font = Theme.Mono,
             TextAlign = HorizontalAlignment.Right,
             DecimalPlaces = isGamma ? 2 : 0,
             Increment = isGamma ? 0.01m : 1m,
