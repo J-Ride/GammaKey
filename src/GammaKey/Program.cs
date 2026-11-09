@@ -21,8 +21,6 @@ internal static class Program
         using var controller = new AppController(baseDir);
         controller.Start();
         var mainForm = new MainForm(controller);
-        // Debug aid: the window starts hidden in the tray, so this lets a screenshot run open it.
-        if (Environment.GetEnvironmentVariable("GAMMAKEY_SHOW") == "1") mainForm.Show();
         using var tray = new TrayIcon(controller, mainForm);
         Application.ApplicationExit += (_, _) => controller.Shutdown();
 

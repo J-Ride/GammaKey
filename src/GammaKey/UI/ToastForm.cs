@@ -16,6 +16,7 @@ public sealed class ToastForm : Form
         TopMost = true;
         StartPosition = FormStartPosition.Manual;
         BackColor = Theme.SurfaceRaised;
+        Padding = new Padding(1);
         _label.ForeColor = Theme.TextPrimary;
         _label.Font = Theme.Title;
         _label.Text = text;

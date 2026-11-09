@@ -7,9 +7,12 @@ public sealed class MainForm : Form
 {
     private readonly AppController _controller;
     private readonly ListBox _profileList = new() { Dock = DockStyle.Fill, IntegralHeight = false, Margin = Padding.Empty };
-    private readonly TextBox _nameBox = new() { Width = 260 };
-    private readonly HotkeyCaptureBox _hotkeyBox = new() { Width = 260 };
-    private readonly ComboBox _targetBox = new() { Width = 260, DropDownStyle = ComboBoxStyle.DropDownList };
+    // Slider (320) + gap + readout (70), so the inputs share the slider rows' right edge.
+    private const int WideInputWidth = 320 + Theme.Space3 + 70;
+
+    private readonly TextBox _nameBox = new() { Width = WideInputWidth };
+    private readonly HotkeyCaptureBox _hotkeyBox = new() { Width = WideInputWidth };
+    private readonly ComboBox _targetBox = new() { Width = WideInputWidth, DropDownStyle = ComboBoxStyle.DropDownList };
     private readonly HotkeyCaptureBox _resetHotkeyBox = new() { Width = 260 };
     private readonly CheckBox _startWithWindows = new() { Text = "Start with Windows", AutoSize = true };
     private readonly CheckBox _showToast = new() { Text = "Show profile name on hotkey", AutoSize = true };

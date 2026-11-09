@@ -97,32 +97,48 @@ public sealed class GkSlider : Control
 
     protected override void OnMouseDown(MouseEventArgs e)
     {
-        if (!Enabled || e.Button != MouseButtons.Left) return;
-        Focus();
-        _dragging = true;
-        Value = XToValue(e.X);
+        if (Enabled && e.Button == MouseButtons.Left)
+        {
+            Focus();
+            _dragging = true;
+            Value = XToValue(e.X);
+        }
+        base.OnMouseDown(e);
     }
 
     protected override void OnMouseMove(MouseEventArgs e)
     {
         if (_dragging) Value = XToValue(e.X);
+        base.OnMouseMove(e);
     }
 
     protected override void OnMouseUp(MouseEventArgs e)
     {
         _dragging = false;
         Invalidate();
+        base.OnMouseUp(e);
     }
 
-    protected override bool IsInputKey(Keys keyData) => keyData is Keys.Left or Keys.Right or Keys.Home or Keys.End || base.IsInputKey(keyData);
+    // Alt+Tab or a popup can take capture mid-drag without a mouse-up.
+    protected override void OnMouseCaptureChanged(EventArgs e)
+    {
+        _dragging = false;
+        Invalidate();
+        base.OnMouseCaptureChanged(e);
+    }
+
+    // Mask modifiers so Shift+Arrow reaches OnKeyDown instead of moving focus.
+    protected override bool IsInputKey(Keys keyData) => (keyData & Keys.KeyCode) is Keys.Left or Keys.Right or Keys.Up or Keys.Down or Keys.Home or Keys.End || base.IsInputKey(keyData);
 
     protected override void OnKeyDown(KeyEventArgs e)
     {
         int step = e.Shift ? 10 : 1;
         switch (e.KeyCode)
         {
-            case Keys.Left: Value -= step; e.Handled = true; break;
-            case Keys.Right: Value += step; e.Handled = true; break;
+            case Keys.Left:
+            case Keys.Down: Value -= step; e.Handled = true; break;
+            case Keys.Right:
+            case Keys.Up: Value += step; e.Handled = true; break;
             case Keys.Home: Value = _minimum; e.Handled = true; break;
             case Keys.End: Value = _maximum; e.Handled = true; break;
         }
