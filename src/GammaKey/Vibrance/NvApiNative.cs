@@ -12,6 +12,8 @@ internal static class NvApiNative
 
     public const int NvApiOk = 0;
     public const int NvApiEndEnumeration = -7;
+    public const int NvApiHandleInvalidated = -8;
+    public const int NvApiExpectedDisplayHandle = -13;
 
     [StructLayout(LayoutKind.Sequential)]
     public struct DvcInfo
@@ -24,7 +26,8 @@ internal static class NvApiNative
         public static DvcInfo Create() => new() { Version = (uint)Marshal.SizeOf<DvcInfo>() | (1u << 16) };
     }
 
-    [DllImport("nvapi64.dll", EntryPoint = "nvapi_QueryInterface", CallingConvention = CallingConvention.Cdecl)]
+    [DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+    [DllImport("nvapi64.dll",EntryPoint = "nvapi_QueryInterface", CallingConvention = CallingConvention.Cdecl)]
     private static extern IntPtr QueryInterface(uint id);
 
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]

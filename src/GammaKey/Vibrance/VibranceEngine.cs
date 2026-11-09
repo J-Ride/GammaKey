@@ -7,6 +7,8 @@ namespace GammaKey.Vibrance;
 public sealed class VibranceEngine
 {
     private readonly Dictionary<string, IntPtr> _handlesByDevice = new(StringComparer.OrdinalIgnoreCase);
+    private NvApiNative.EnumNvidiaDisplayHandleDelegate? _enumHandle;
+    private NvApiNative.GetAssociatedNvidiaDisplayNameDelegate? _getName;
     private NvApiNative.GetDvcInfoDelegate? _getInfo;
     private NvApiNative.SetDvcLevelDelegate? _setLevel;
 
@@ -32,12 +34,12 @@ public sealed class VibranceEngine
     private void Initialize()
     {
         var init = NvApiNative.Initialize;
-        var enumHandle = NvApiNative.EnumNvidiaDisplayHandle;
-        var getName = NvApiNative.GetAssociatedNvidiaDisplayName;
+        _enumHandle = NvApiNative.EnumNvidiaDisplayHandle;
+        _getName = NvApiNative.GetAssociatedNvidiaDisplayName;
         _getInfo = NvApiNative.GetDvcInfo;
         _setLevel = NvApiNative.SetDvcLevel;
 
-        if (init is null || enumHandle is null || getName is null || _getInfo is null || _setLevel is null)
+        if (init is null || _enumHandle is null || _getName is null || _getInfo is null || _setLevel is null)
         {
             UnavailableReason = "NVIDIA driver missing vibrance support";
             return;
@@ -48,16 +50,7 @@ public sealed class VibranceEngine
             return;
         }
 
-        var nameBuffer = new byte[64];
-        for (int i = 0; ; i++)
-        {
-            var status = enumHandle(i, out var handle);
-            if (status != NvApiNative.NvApiOk) break;
-            Array.Clear(nameBuffer);
-            if (getName(handle, nameBuffer) != NvApiNative.NvApiOk) continue;
-            var name = Encoding.ASCII.GetString(nameBuffer).TrimEnd('\0');
-            if (name.Length > 0) _handlesByDevice[name] = handle;
-        }
+        RefreshHandles();
 
         IsAvailable = _handlesByDevice.Count > 0;
         if (!IsAvailable) UnavailableReason = "No monitor on an NVIDIA output";
@@ -96,16 +89,56 @@ public sealed class VibranceEngine
             SetRaw(device, level);
     }
 
+    private void RefreshHandles()
+    {
+        _handlesByDevice.Clear();
+        if (_enumHandle is null || _getName is null) return;
+
+        const int MaxDisplays = 128; // NVAPI_MAX_DISPLAYS
+        var nameBuffer = new byte[64];
+        for (int i = 0; i < MaxDisplays; i++)
+        {
+            var status = _enumHandle(i, out var handle);
+            if (status == NvApiNative.NvApiEndEnumeration || status != NvApiNative.NvApiOk) break;
+            Array.Clear(nameBuffer);
+            if (_getName(handle, nameBuffer) != NvApiNative.NvApiOk) continue;
+            var name = Encoding.ASCII.GetString(nameBuffer).TrimEnd('\0');
+            if (name.Length > 0) _handlesByDevice[name] = handle;
+        }
+    }
+
+    private static bool IsStaleHandle(int status) =>
+        status is NvApiNative.NvApiHandleInvalidated or NvApiNative.NvApiExpectedDisplayHandle;
+
     private int? GetRaw(string deviceName, out NvApiNative.DvcInfo info)
     {
         info = NvApiNative.DvcInfo.Create();
         if (!IsAvailable || _getInfo is null || !_handlesByDevice.TryGetValue(deviceName, out var handle)) return null;
-        return _getInfo(handle, 0, ref info) == NvApiNative.NvApiOk ? info.CurrentLevel : null;
+        // outputId 0: the display handle already identifies the output.
+        var status = _getInfo(handle, 0, ref info);
+        if (IsStaleHandle(status))
+        {
+            // Handles are invalidated by any display mode change, such as a game entering fullscreen.
+            RefreshHandles();
+            if (!_handlesByDevice.TryGetValue(deviceName, out handle)) return null;
+            info = NvApiNative.DvcInfo.Create();
+            status = _getInfo(handle, 0, ref info);
+        }
+        return status == NvApiNative.NvApiOk ? info.CurrentLevel : null;
     }
 
     private bool SetRaw(string deviceName, int level)
     {
         if (!IsAvailable || _setLevel is null || !_handlesByDevice.TryGetValue(deviceName, out var handle)) return false;
-        return _setLevel(handle, 0, level) == NvApiNative.NvApiOk;
+        // outputId 0: the display handle already identifies the output.
+        var status = _setLevel(handle, 0, level);
+        if (IsStaleHandle(status))
+        {
+            // Handles are invalidated by any display mode change, such as a game entering fullscreen.
+            RefreshHandles();
+            if (!_handlesByDevice.TryGetValue(deviceName, out handle)) return false;
+            status = _setLevel(handle, 0, level);
+        }
+        return status == NvApiNative.NvApiOk;
     }
 }
