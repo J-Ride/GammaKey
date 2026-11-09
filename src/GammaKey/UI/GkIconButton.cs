@@ -7,6 +7,7 @@ public sealed class GkIconButton : Control
 {
     private bool _hover;
     private bool _pressed;
+    private bool _isKeyDown;
 
     public GkIconButton(GkIcon icon, string name)
     {
@@ -46,12 +47,24 @@ public sealed class GkIconButton : Control
     protected override void OnMouseDown(MouseEventArgs e) { if (e.Button == MouseButtons.Left) { _pressed = true; Focus(); Invalidate(); } base.OnMouseDown(e); }
     protected override void OnMouseUp(MouseEventArgs e) { _pressed = false; Invalidate(); base.OnMouseUp(e); }
     protected override void OnGotFocus(EventArgs e) { Invalidate(); base.OnGotFocus(e); }
-    protected override void OnLostFocus(EventArgs e) { Invalidate(); base.OnLostFocus(e); }
+    protected override void OnLostFocus(EventArgs e) { _isKeyDown = false; Invalidate(); base.OnLostFocus(e); }
     protected override void OnEnabledChanged(EventArgs e) { Invalidate(); base.OnEnabledChanged(e); }
 
+    // Act on key release, like a stock Button, so holding the key does not click once per repeat.
     protected override void OnKeyDown(KeyEventArgs e)
     {
-        if (e.KeyCode is Keys.Space or Keys.Enter) { OnClick(EventArgs.Empty); e.Handled = true; }
+        if (e.KeyCode is Keys.Space or Keys.Enter) { _isKeyDown = true; e.Handled = true; }
         base.OnKeyDown(e);
+    }
+
+    protected override void OnKeyUp(KeyEventArgs e)
+    {
+        if (_isKeyDown && e.KeyCode is Keys.Space or Keys.Enter)
+        {
+            _isKeyDown = false;
+            OnClick(EventArgs.Empty);
+            e.Handled = true;
+        }
+        base.OnKeyUp(e);
     }
 }

@@ -43,9 +43,20 @@ public sealed class GkDropdown : ComboBox
         using var g = Graphics.FromHwnd(Handle);
         g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
         var r = new Rectangle(0, 0, Width - 1, Height - 1);
-        using (var pen = new Pen(Focused ? Theme.Accent : Theme.Line)) Theme.DrawRounded(g, pen, r, Theme.Radius);
-        var arrowBox = new Rectangle(Width - 20, 0, 18, Height);
+        // The system drop-down button is scroll-bar wide (it grows with DPI), so cover all of it.
+        int buttonWidth = SystemInformation.GetVerticalScrollBarWidthForDpi(DeviceDpi) + 2;
+        var arrowBox = new Rectangle(Width - buttonWidth, 0, buttonWidth, Height);
         using (var back = new SolidBrush(Theme.Surface)) g.FillRectangle(back, arrowBox);
+        using (var path = Theme.RoundedPath(r, Theme.Radius))
+        {
+            // Square corners outside the rounded border take the parent colour.
+            var state = g.Save();
+            g.SetClip(path, System.Drawing.Drawing2D.CombineMode.Exclude);
+            using (var outside = new SolidBrush(Parent?.BackColor ?? Theme.Background)) g.FillRectangle(outside, ClientRectangle);
+            g.Restore(state);
+            using var pen = new Pen(Focused ? Theme.Accent : Theme.Line);
+            g.DrawPath(pen, path);
+        }
         using var ap = new Pen(Enabled ? Theme.Accent : Theme.TextDim, 1.5f);
         float cx = arrowBox.Left + arrowBox.Width / 2f;
         float cy = Height / 2f - 1;

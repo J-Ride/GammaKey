@@ -441,8 +441,9 @@ public sealed class MainForm : Form
 
     private void SaveSettingsAndRegister(GkHotkeyBox? changedBox = null)
     {
-        _controller.Save();
+        // Register before Save so the armed-hotkeys chip refreshed by SettingsChanged is current.
         var failed = _controller.RegisterHotkeys();
+        _controller.Save();
         var messages = new List<string>();
         if (failed.Count > 0) messages.Add($"Hotkey already used by another app: {string.Join(", ", failed)}. Pick another.");
         if (changedBox is not null)

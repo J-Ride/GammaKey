@@ -9,6 +9,7 @@ public sealed class GkToggle : Control
     private const int SwitchHeight = 18;
     private bool _checked;
     private bool _hover;
+    private bool _isKeyDown;
 
     public event EventHandler? CheckedChanged;
 
@@ -74,8 +75,19 @@ public sealed class GkToggle : Control
     protected override void OnMouseEnter(EventArgs e) { _hover = true; Invalidate(); base.OnMouseEnter(e); }
     protected override void OnMouseLeave(EventArgs e) { _hover = false; Invalidate(); base.OnMouseLeave(e); }
     protected override void OnMouseDown(MouseEventArgs e) { if (Enabled && e.Button == MouseButtons.Left) { Focus(); Toggle(); } base.OnMouseDown(e); }
-    protected override void OnKeyDown(KeyEventArgs e) { if (e.KeyCode == Keys.Space) { Toggle(); e.Handled = true; } base.OnKeyDown(e); }
+    // Toggle on key release so holding Space does not flip the switch once per repeat.
+    protected override void OnKeyDown(KeyEventArgs e) { if (e.KeyCode == Keys.Space) { _isKeyDown = true; e.Handled = true; } base.OnKeyDown(e); }
+    protected override void OnKeyUp(KeyEventArgs e)
+    {
+        if (_isKeyDown && e.KeyCode == Keys.Space)
+        {
+            _isKeyDown = false;
+            Toggle();
+            e.Handled = true;
+        }
+        base.OnKeyUp(e);
+    }
     protected override void OnGotFocus(EventArgs e) { Invalidate(); base.OnGotFocus(e); }
-    protected override void OnLostFocus(EventArgs e) { Invalidate(); base.OnLostFocus(e); }
+    protected override void OnLostFocus(EventArgs e) { _isKeyDown = false; Invalidate(); base.OnLostFocus(e); }
     protected override void OnTextChanged(EventArgs e) { Invalidate(); base.OnTextChanged(e); }
 }

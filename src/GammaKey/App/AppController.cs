@@ -167,12 +167,11 @@ public sealed class AppController : IDisposable
         _hotkeys = CreateListener(on);
         _hotkeys.Pressed += OnHotkeyPressed;
         bool isActive = (_hotkeys is KeyboardHookListener) == on;
-        if (isActive)
-        {
-            Settings.HotkeyPassthrough = on;
-            Save();
-        }
+        if (isActive) Settings.HotkeyPassthrough = on;
+        // Register before Save so SettingsChanged listeners read the new ArmedHotkeys count.
         RegisterHotkeys();
+        if (isActive) Save();
+        else SettingsChanged?.Invoke();
         return isActive;
     }
 
