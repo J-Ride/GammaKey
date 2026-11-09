@@ -84,6 +84,30 @@ public class ProfileStoreTests : IDisposable
     }
 
     [Fact]
+    public void LiteralNullFileKeepsBackup()
+    {
+        var path = PathFor("profiles.json");
+        File.WriteAllText(path, "null");
+        var store = new ProfileStore(path);
+
+        store.Load();
+
+        Assert.True(File.Exists(path + ".corrupt"));
+    }
+
+    [Fact]
+    public void LiteralNullFileFallsBackToDefaults()
+    {
+        var path = PathFor("profiles.json");
+        File.WriteAllText(path, "null");
+        var store = new ProfileStore(path);
+
+        var settings = store.Load();
+
+        Assert.Equal(new[] { "Dark Room", "Bright Outdoors", "Normal" }, settings.Profiles.Select(p => p.Name));
+    }
+
+    [Fact]
     public void NullProfilesArrayLoadsAsEmptyList()
     {
         var path = PathFor("profiles.json");

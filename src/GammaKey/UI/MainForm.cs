@@ -204,6 +204,7 @@ public sealed class MainForm : Form
         bar.MouseUp += (_, _) => SaveIfEditing();
         bar.KeyUp += (_, _) => SaveIfEditing();
         bar.MouseCaptureChanged += (_, _) => SaveIfEditing();
+        bar.MouseWheel += (_, _) => SaveIfEditing();
 
         return FormRow(new Label { Text = label, Font = Theme.Label, ForeColor = Theme.TextMuted }, bar, number);
     }
@@ -398,6 +399,7 @@ public sealed class MainForm : Form
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
+            // An unreadable file gets the same "Could not read" message as bad JSON, below.
         }
         if (incoming is null || incoming.Profiles.Count == 0)
         {

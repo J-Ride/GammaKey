@@ -70,6 +70,30 @@ public class ProfileImportTests
     }
 
     [Fact]
+    public void EmptyHotkeysNeverCountAsClashes()
+    {
+        var result = ProfileImport.Merge(new[] { P("Normal"), P("Dark") }, new[] { P("A"), P("B") }, "");
+
+        Assert.Equal(("", "", 0), (result.Added[0].Hotkey, result.Added[1].Hotkey, result.HotkeysCleared));
+    }
+
+    [Fact]
+    public void HotkeyClashDifferingOnlyInCaseIsCleared()
+    {
+        var result = ProfileImport.Merge(new[] { P("Normal", "Ctrl+F1") }, new[] { P("Cave", "ctrl+f1") }, "");
+
+        Assert.Equal(("", 1), (Assert.Single(result.Added).Hotkey, result.HotkeysCleared));
+    }
+
+    [Fact]
+    public void DuplicateNameInsideImportGetsImportedSuffix()
+    {
+        var result = ProfileImport.Merge(new[] { P("Normal") }, new[] { P("Cave"), P("Cave") }, "");
+
+        Assert.Equal(new[] { "Cave", "Cave (imported)" }, result.Added.Select(p => p.Name));
+    }
+
+    [Fact]
     public void IncomingProfilesAreNotMutated()
     {
         var incoming = new[] { P("Normal", "F1") };
