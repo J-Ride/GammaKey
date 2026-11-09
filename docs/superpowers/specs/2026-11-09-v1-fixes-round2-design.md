@@ -114,7 +114,7 @@ New `Hotkeys/KeyboardHookListener.cs`, `IHotkeyListener`:
 - Auto-repeat: the hook keeps a `HashSet<uint>` of keys currently down. A key already in the set is a repeat and is ignored. `WM_KEYUP (0x101)` and `WM_SYSKEYUP (0x105)` remove the key.
 - Matching uses `HotkeyTable`, a pure class: `Register(id, combo)`, `UnregisterAll()`, `int? Match(uint modifiers, Keys key)`. A match raises `Pressed(id)`.
 - The callback always returns `CallNextHookEx`, so the key reaches the active app. That is the whole point.
-- `Register` always returns true: a hook cannot be refused by another app. Collisions between GammaKey's own hotkeys are already cleared by import and are the user's own doing in the editor.
+- `Register` returns whether the hook is installed (`IsInstalled`). A hook cannot be refused by another app, but the install itself can fail; the controller then falls back to the normal listener and leaves the setting off. Collisions between GammaKey's own hotkeys are already cleared by import and are the user's own doing in the editor.
 
 Modifier keys themselves (Ctrl, Alt, Shift, Win key-downs) are never matched as a hotkey key.
 
