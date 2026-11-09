@@ -348,15 +348,17 @@ public sealed class MainForm : Form
     {
         _controller.Save();
         var failed = _controller.RegisterHotkeys();
-        if (failed.Count > 0)
+        var messages = new List<string>();
+        if (failed.Count > 0) messages.Add($"Hotkey already used by another app: {string.Join(", ", failed)}. Pick another.");
+        if (changedBox is not null)
         {
-            _status.Text = $"Hotkey already used by another app: {string.Join(", ", failed)}. Pick another.";
-            if (changedBox is not null && _editing is not null && failed.Contains(_editing.Name)) changedBox.ForeColor = Theme.Warning;
-            return;
+            // Another profile can still be refused after this one is fixed, so the colour and
+            // the no-modifier warning depend only on the edited profile.
+            bool isRefused = _editing is not null && failed.Contains(_editing.Name);
+            changedBox.ForeColor = isRefused ? Theme.Warning : Theme.TextPrimary;
+            if (!isRefused && changedBox.Combo.Length > 0 && !HotkeyCombo.HasModifier(changedBox.Combo)) messages.Add(HotkeyCombo.NoModifierWarning);
         }
-        if (changedBox is not null) changedBox.ForeColor = Theme.TextPrimary;
-        bool plainKey = changedBox is not null && changedBox.Combo.Length > 0 && !HotkeyCombo.HasModifier(changedBox.Combo);
-        _status.Text = plainKey ? HotkeyCombo.NoModifierWarning : "";
+        _status.Text = string.Join(" ", messages);
     }
 
     private void AddProfile()
@@ -383,7 +385,15 @@ public sealed class MainForm : Form
         var index = _controller.Settings.Profiles.IndexOf(_editing);
         _controller.Settings.Profiles.Remove(_editing);
         SaveSettingsAndRegister();
-        if (_profileList.Items.Count > 0) _profileList.SelectedIndex = Math.Min(index, _profileList.Items.Count - 1);
+        if (_profileList.Items.Count > 0)
+        {
+            // The save refreshes the list and keeps the old index. When the new index is the
+            // same, the list raises no SelectedIndexChanged, so the editor is rebound here.
+            _loading = true;
+            _profileList.SelectedIndex = Math.Min(index, _profileList.Items.Count - 1);
+            _loading = false;
+            LoadSelectedProfile();
+        }
         else { _editing = null; SetEditorEnabled(false); }
     }
 
