@@ -22,6 +22,7 @@ public sealed class AppController : IDisposable
     public string BaseDirectory { get; }
     public string LockPath => Path.Combine(BaseDirectory, "running.lock");
     public AppSettings Settings { get; private set; }
+    public int ArmedHotkeys { get; private set; }
     public DisplayEngine Display { get; } = new();
     public VibranceEngine Vibrance { get; } = new();
 
@@ -80,17 +81,22 @@ public sealed class AppController : IDisposable
         _profileIdsByHotkeyId.Clear();
         var failed = new List<string>();
 
-        if (HotkeyCombo.TryParse(Settings.ResetHotkey, out var resetCombo) && !_hotkeys.Register(ResetHotkeyId, resetCombo))
-            failed.Add("Reset");
+        int armed = 0;
+        if (HotkeyCombo.TryParse(Settings.ResetHotkey, out var resetCombo))
+        {
+            if (_hotkeys.Register(ResetHotkeyId, resetCombo)) armed++;
+            else failed.Add("Reset");
+        }
 
         int nextId = FirstProfileHotkeyId;
         foreach (var profile in Settings.Profiles)
         {
             if (!HotkeyCombo.TryParse(profile.Hotkey, out var combo)) continue;
-            if (_hotkeys.Register(nextId, combo)) _profileIdsByHotkeyId[nextId] = profile.Id;
+            if (_hotkeys.Register(nextId, combo)) { _profileIdsByHotkeyId[nextId] = profile.Id; armed++; }
             else failed.Add(profile.Name);
             nextId++;
         }
+        ArmedHotkeys = armed;
         return failed;
     }
 
