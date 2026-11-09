@@ -26,7 +26,7 @@ public sealed class HotkeyCaptureBox : TextBox
         }
     }
 
-    protected override bool IsInputKey(Keys keyData) => true;
+    protected override bool IsInputKey(Keys keyData) => keyData is not (Keys.Tab or (Keys.Tab | Keys.Shift));
 
     protected override void OnKeyDown(KeyEventArgs e)
     {

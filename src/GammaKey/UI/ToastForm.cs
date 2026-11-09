@@ -22,7 +22,11 @@ public sealed class ToastForm : Form
         Controls.Add(_label);
         AutoSize = true;
         AutoSizeMode = AutoSizeMode.GrowAndShrink;
-        _timer.Tick += (_, _) => Close();
+        _timer.Tick += (_, _) =>
+        {
+            _timer.Stop();
+            Close();
+        };
     }
 
     protected override bool ShowWithoutActivation => true;
@@ -37,12 +41,23 @@ public sealed class ToastForm : Form
         }
     }
 
+    protected override void OnLoad(EventArgs e)
+    {
+        base.OnLoad(e);
+        var area = Screen.PrimaryScreen?.WorkingArea ?? new Rectangle(0, 0, 1920, 1080);
+        Location = new Point(area.Left + (area.Width - Width) / 2, area.Top + 48);
+    }
+
     protected override void OnShown(EventArgs e)
     {
         base.OnShown(e);
-        var area = Screen.PrimaryScreen?.WorkingArea ?? new Rectangle(0, 0, 1920, 1080);
-        Location = new Point(area.Left + (area.Width - Width) / 2, area.Top + 48);
         _timer.Start();
+    }
+
+    protected override void OnFormClosed(FormClosedEventArgs e)
+    {
+        base.OnFormClosed(e);
+        _timer.Dispose();
     }
 
     public static void Show(string text)

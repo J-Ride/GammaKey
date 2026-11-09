@@ -1,4 +1,5 @@
 using GammaKey.App;
+using GammaKey.Models;
 
 namespace GammaKey.UI;
 
@@ -8,6 +9,9 @@ public sealed class TrayIcon : IDisposable
     private readonly MainForm _mainForm;
     private readonly NotifyIcon _icon = new();
     private readonly ContextMenuStrip _menu = new();
+    private readonly Action _onSettingsChanged;
+    private readonly Action<Profile, string?> _onProfileApplied;
+    private readonly Action<string> _onResetApplied;
 
     public TrayIcon(AppController controller, MainForm mainForm)
     {
@@ -19,15 +23,22 @@ public sealed class TrayIcon : IDisposable
         _icon.ContextMenuStrip = _menu;
         _icon.MouseClick += (_, e) => { if (e.Button == MouseButtons.Left) _mainForm.ShowAndFocus(); };
         _menu.Opening += (_, _) => RebuildMenu();
-        _controller.SettingsChanged += RebuildMenu;
-        _controller.ProfileApplied += (p, note) =>
+        _onSettingsChanged = () =>
+        {
+            if (_menu.IsHandleCreated) _menu.BeginInvoke((Action)RebuildMenu);
+            else RebuildMenu();
+        };
+        _onProfileApplied = (p, note) =>
         {
             if (_controller.Settings.ShowToast) ToastForm.Show(note is null ? p.Name : $"{p.Name}  ·  {note}");
         };
-        _controller.ResetApplied += text =>
+        _onResetApplied = text =>
         {
             if (_controller.Settings.ShowToast) ToastForm.Show(text);
         };
+        _controller.SettingsChanged += _onSettingsChanged;
+        _controller.ProfileApplied += _onProfileApplied;
+        _controller.ResetApplied += _onResetApplied;
         RebuildMenu();
     }
 
@@ -53,6 +64,9 @@ public sealed class TrayIcon : IDisposable
 
     public void Dispose()
     {
+        _controller.SettingsChanged -= _onSettingsChanged;
+        _controller.ProfileApplied -= _onProfileApplied;
+        _controller.ResetApplied -= _onResetApplied;
         _icon.Visible = false;
         _icon.Dispose();
         _menu.Dispose();

@@ -36,6 +36,12 @@ public sealed class MainForm : Form
         Height = 640;
         StartPosition = FormStartPosition.CenterScreen;
         FormClosing += OnFormClosing;
+        _controller.SettingsChanged += () =>
+        {
+            if (IsDisposed) return;
+            LoadSettingsIntoControls();
+            RefreshProfileList(keepSelection: true);
+        };
 
         BuildLayout();
         LoadMonitorsIntoTarget();
@@ -98,7 +104,7 @@ public sealed class MainForm : Form
         root.Controls.Add(right, 1, 0);
 
         _nameBox.TextChanged += (_, _) => { if (_editing is not null && !_loading) { _editing.Name = _nameBox.Text; RefreshProfileList(keepSelection: true); } };
-        _hotkeyBox.ComboChanged += (_, _) => { if (_editing is not null && !_loading) _editing.Hotkey = _hotkeyBox.Combo; };
+        _hotkeyBox.ComboChanged += (_, _) => { if (_editing is not null && !_loading) { _editing.Hotkey = _hotkeyBox.Combo; RefreshProfileList(keepSelection: true); } };
         _targetBox.SelectedIndexChanged += (_, _) => { if (_editing is not null && !_loading) _editing.Target = TargetFromCombo(); };
         _resetHotkeyBox.ComboChanged += (_, _) => { if (!_loading) { _controller.Settings.ResetHotkey = _resetHotkeyBox.Combo; SaveSettingsAndRegister(); } };
         _startWithWindows.CheckedChanged += (_, _) => { if (!_loading) _controller.SetStartWithWindows(_startWithWindows.Checked); };
@@ -206,6 +212,23 @@ public sealed class MainForm : Form
         _targetBox.SelectedIndex = 0;
     }
 
+    private void SetEditorEnabled(bool on)
+    {
+        _nameBox.Enabled = on;
+        _hotkeyBox.Enabled = on;
+        _targetBox.Enabled = on;
+        foreach (var (bar, number) in _numbers)
+        {
+            bar.Enabled = on;
+            number.Enabled = on;
+        }
+        if (on && !_controller.Vibrance.IsAvailable)
+        {
+            _vibrance.Enabled = false;
+            _numbers[_vibrance].Enabled = false;
+        }
+    }
+
     private void LoadSettingsIntoControls()
     {
         _loading = true;
@@ -231,8 +254,9 @@ public sealed class MainForm : Form
     {
         if (_loading) return;
         var index = _profileList.SelectedIndex;
-        if (index < 0 || index >= _controller.Settings.Profiles.Count) { _editing = null; return; }
+        if (index < 0 || index >= _controller.Settings.Profiles.Count) { _editing = null; SetEditorEnabled(false); return; }
         _editing = _controller.Settings.Profiles[index];
+        SetEditorEnabled(true);
 
         _loading = true;
         _nameBox.Text = _editing.Name;
@@ -308,7 +332,7 @@ public sealed class MainForm : Form
         SaveSettingsAndRegister();
         RefreshProfileList();
         if (_profileList.Items.Count > 0) _profileList.SelectedIndex = Math.Min(index, _profileList.Items.Count - 1);
-        else _editing = null;
+        else { _editing = null; SetEditorEnabled(false); }
     }
 
     private void OnFormClosing(object? sender, FormClosingEventArgs e)
