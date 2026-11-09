@@ -30,17 +30,26 @@ public sealed class TrayIcon : IDisposable
         };
         _onProfileApplied = (p, note) =>
         {
-            if (_controller.Settings.ShowToast) ToastForm.Show(note is null ? p.Name : $"{p.Name}  ·  {note}");
+            if (!_controller.Settings.ShowToast) return;
+            var detail = string.Join(" · ", new[] { string.Join(" ", Format.HotkeyParts(p.Hotkey)).ToUpperInvariant(), TargetText(p.Target), note ?? "" }.Where(s => s.Length > 0));
+            ToastForm.Show(p.Name, detail);
         };
         _onResetApplied = text =>
         {
-            if (_controller.Settings.ShowToast) ToastForm.Show(text);
+            if (_controller.Settings.ShowToast) ToastForm.Show(text, string.Join(" ", Format.HotkeyParts(_controller.Settings.ResetHotkey)).ToUpperInvariant());
         };
         _controller.SettingsChanged += _onSettingsChanged;
         _controller.ProfileApplied += _onProfileApplied;
         _controller.ResetApplied += _onResetApplied;
         RebuildMenu();
     }
+
+    private static string TargetText(MonitorTarget target) => target.Mode switch
+    {
+        MonitorTarget.All => "all monitors",
+        MonitorTarget.Monitor => target.MonitorName ?? "monitor",
+        _ => "primary monitor",
+    };
 
     internal static Icon CreateIcon()
     {
