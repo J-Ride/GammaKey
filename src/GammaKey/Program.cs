@@ -1,4 +1,5 @@
 using GammaKey.App;
+using GammaKey.UI;
 
 namespace GammaKey;
 
@@ -19,6 +20,8 @@ internal static class Program
         var baseDir = AppContext.BaseDirectory;
         using var controller = new AppController(baseDir);
         controller.Start();
+        var mainForm = new MainForm(controller);
+        using var tray = new TrayIcon(controller, mainForm);
         Application.ApplicationExit += (_, _) => controller.Shutdown();
 
         Application.Run();
