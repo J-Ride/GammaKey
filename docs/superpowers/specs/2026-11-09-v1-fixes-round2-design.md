@@ -109,7 +109,7 @@ public interface IHotkeyListener : IDisposable
 
 New `Hotkeys/KeyboardHookListener.cs`, `IHotkeyListener`:
 
-- `SetWindowsHookEx(WH_KEYBOARD_LL = 13, callback, moduleHandle, 0)` installed in the constructor on the calling (UI) thread. The delegate is kept in a field so the GC cannot collect it. `UnhookWindowsHookEx` in `Dispose`.
+- `SetWindowsHookEx(WH_KEYBOARD_LL = 13, callback, moduleHandle, 0)` installed on a dedicated background thread that runs its own `GetMessage` loop. Windows delivers a low-level hook only when the installing thread pumps messages, so a hook on the UI thread would make every key press on the machine wait for gamma writes and risk the hook being dropped on timeout. The constructor starts the thread and waits until the hook is installed (or failed) before returning. `Dispose` posts `WM_QUIT` to the thread, which unhooks and exits. The delegate is kept in a field so the GC cannot collect it. (Decision 2026-11-09: dedicated thread approved by Jordan after the final review.)
 - The callback handles `WM_KEYDOWN (0x100)` and `WM_SYSKEYDOWN (0x104)`. It ignores injected input (`KBDLLHOOKSTRUCT.flags & 0x10`). It reads modifier state with `GetAsyncKeyState` for Ctrl (0x11), Alt (0x12), Shift (0x10), Win (0x5B, 0x5C) and builds a modifier mask using `HotkeyCombo.ModControl/ModAlt/ModShift/ModWin`.
 - Auto-repeat: the hook keeps a `HashSet<uint>` of keys currently down. A key already in the set is a repeat and is ignored. `WM_KEYUP (0x101)` and `WM_SYSKEYUP (0x105)` remove the key.
 - Matching uses `HotkeyTable`, a pure class: `Register(id, combo)`, `UnregisterAll()`, `int? Match(uint modifiers, Keys key)`. A match raises `Pressed(id)`.
