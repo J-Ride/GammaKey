@@ -81,12 +81,16 @@ public sealed class MainForm : Form
         Controls.Add(root);
 
         // Left: profile list, its buttons, then the Settings button. App settings live in a dialog.
-        var left = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, Margin = Padding.Empty };
+        var left = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 3, Margin = Padding.Empty };
         left.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        // Explicit rows: a content-sized row holding a Dock=Fill AutoSize panel is circular and
+        // collapses to zero height when the form is laid out before the message loop runs.
         left.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        left.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        left.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         left.Controls.Add(_profileList);
         // A wrapping row so five buttons fit the 280 px column without clipping any label.
-        var leftButtons = new FlowLayoutPanel { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, WrapContents = true, Dock = DockStyle.Fill, Margin = new Padding(0, Theme.Space3, 0, 0) };
+        var leftButtons = new FlowLayoutPanel { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, WrapContents = true, Anchor = AnchorStyles.Left | AnchorStyles.Right, Margin = new Padding(0, Theme.Space3, 0, 0) };
         leftButtons.Controls.Add(Button("Add", (_, _) => AddProfile()));
         leftButtons.Controls.Add(Button("Duplicate", (_, _) => DuplicateProfile()));
         leftButtons.Controls.Add(Button("Delete", (_, _) => DeleteProfile()));
