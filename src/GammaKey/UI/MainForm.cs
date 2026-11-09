@@ -16,7 +16,7 @@ public sealed class MainForm : Form
     private const string ProfileFileFilter = "GammaKey profiles (*.json)|*.json";
 
     private readonly TextBox _nameBox = new() { Width = WideInputWidth };
-    private readonly HotkeyCaptureBox _hotkeyBox = new() { Width = WideInputWidth };
+    private readonly GkHotkeyBox _hotkeyBox = new() { Width = WideInputWidth };
     private readonly ComboBox _targetBox = new() { Width = WideInputWidth, DropDownStyle = ComboBoxStyle.DropDownList };
     private readonly Label _status = new() { AutoSize = true, ForeColor = Theme.Warning, MaximumSize = new Size(420, 0), Margin = new Padding(Theme.LabelColumnWidth, Theme.Space2, 0, 0) };
     private readonly Label _vibranceNote = new() { AutoSize = true, ForeColor = Theme.TextMuted, Font = Theme.Caption, Margin = new Padding(Theme.LabelColumnWidth, 0, 0, Theme.Space1) };
@@ -306,7 +306,7 @@ public sealed class MainForm : Form
         foreach (var (bar, number) in _numbers)
             number.Value = ReferenceEquals(bar, _gamma) ? bar.Value / 100m : bar.Value;
         _loading = false;
-        _hotkeyBox.ForeColor = Theme.TextPrimary;
+        _hotkeyBox.IsRefused = false;
         if (!apply) return;
         // Clicking a profile is the same as pressing its hotkey: the screen changes at once.
         var result = _controller.ApplyProfile(_editing);
@@ -328,7 +328,7 @@ public sealed class MainForm : Form
         if (_editing is not null && !_loading) _controller.Save();
     }
 
-    private void SaveSettingsAndRegister(HotkeyCaptureBox? changedBox = null)
+    private void SaveSettingsAndRegister(GkHotkeyBox? changedBox = null)
     {
         _controller.Save();
         var failed = _controller.RegisterHotkeys();
@@ -339,7 +339,7 @@ public sealed class MainForm : Form
             // Another profile can still be refused after this one is fixed, so the colour and
             // the no-modifier warning depend only on the edited profile.
             bool isRefused = _editing is not null && failed.Contains(_editing.Name);
-            changedBox.ForeColor = isRefused ? Theme.Warning : Theme.TextPrimary;
+            changedBox.IsRefused = isRefused;
             if (!isRefused && changedBox.Combo.Length > 0 && !HotkeyCombo.HasModifier(changedBox.Combo) && !_controller.Settings.HotkeyPassthrough) messages.Add(HotkeyCombo.NoModifierWarning);
         }
         _status.Text = string.Join(" ", messages);

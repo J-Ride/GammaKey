@@ -12,7 +12,7 @@ public sealed class SettingsForm : Form
     private readonly CheckBox _showToast = new() { Text = "Show profile name on hotkey", AutoSize = true };
     private readonly CheckBox _guard = new() { Text = "Re-apply if Windows resets the curve", AutoSize = true };
     private readonly CheckBox _passthrough = new() { Text = "Let hotkeys pass through to other apps", AutoSize = true };
-    private readonly HotkeyCaptureBox _resetHotkeyBox = new() { Width = 320 };
+    private readonly GkHotkeyBox _resetHotkeyBox = new() { Width = 320 };
     private readonly Label _status = new() { AutoSize = true, ForeColor = Theme.Warning, MaximumSize = new Size(340, 0), Margin = new Padding(0, Theme.Space2, 0, 0) };
     private readonly Action _onSettingsChanged;
     private bool _loading;
@@ -124,7 +124,7 @@ public sealed class SettingsForm : Form
         // A profile hotkey can still be refused after the Reset key is fixed, so the colour and
         // the no-modifier warning depend only on the Reset hotkey.
         bool isRefused = failed.Contains("Reset");
-        _resetHotkeyBox.ForeColor = isRefused ? Theme.Warning : Theme.TextPrimary;
+        _resetHotkeyBox.IsRefused = isRefused;
         if (!isRefused && _resetHotkeyBox.Combo.Length > 0 && !HotkeyCombo.HasModifier(_resetHotkeyBox.Combo) && !_controller.Settings.HotkeyPassthrough) messages.Add(HotkeyCombo.NoModifierWarning);
         _status.Text = string.Join(" ", messages);
     }
