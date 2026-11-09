@@ -338,7 +338,7 @@ public sealed class MainForm : Form
             // the no-modifier warning depend only on the edited profile.
             bool isRefused = _editing is not null && failed.Contains(_editing.Name);
             changedBox.ForeColor = isRefused ? Theme.Warning : Theme.TextPrimary;
-            if (!isRefused && changedBox.Combo.Length > 0 && !HotkeyCombo.HasModifier(changedBox.Combo)) messages.Add(HotkeyCombo.NoModifierWarning);
+            if (!isRefused && changedBox.Combo.Length > 0 && !HotkeyCombo.HasModifier(changedBox.Combo) && !_controller.Settings.HotkeyPassthrough) messages.Add(HotkeyCombo.NoModifierWarning);
         }
         _status.Text = string.Join(" ", messages);
     }

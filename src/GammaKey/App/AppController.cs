@@ -14,7 +14,7 @@ public sealed class AppController : IDisposable
 
     private readonly ProfileStore _profileStore;
     private readonly BaselineStore _baselineStore;
-    private readonly HotkeyListener _hotkeys = new();
+    private IHotkeyListener _hotkeys;
     private readonly System.Windows.Forms.Timer _guard = new() { Interval = GuardIntervalMs };
     private readonly Dictionary<int, string> _profileIdsByHotkeyId = new();
     private Baseline _baseline = new();
@@ -35,6 +35,7 @@ public sealed class AppController : IDisposable
         _profileStore = new ProfileStore(Path.Combine(baseDirectory, "profiles.json"));
         _baselineStore = new BaselineStore(Path.Combine(baseDirectory, "baseline.json"));
         Settings = _profileStore.Load();
+        _hotkeys = CreateListener(Settings.HotkeyPassthrough);
         _hotkeys.Pressed += OnHotkeyPressed;
         _guard.Tick += (_, _) => { if (Settings.GuardEnabled) Display.ReapplyIfCleared(); };
     }
@@ -135,6 +136,33 @@ public sealed class AppController : IDisposable
         StartupRegistration.Set(on);
         Settings.StartWithWindows = on;
         Save();
+    }
+
+    private static IHotkeyListener CreateListener(bool passthrough) =>
+        passthrough ? new KeyboardHookListener() : new HotkeyListener();
+
+    /// Returns true when the requested mode is active afterwards.
+    public bool SetHotkeyPassthrough(bool on)
+    {
+        if (Settings.HotkeyPassthrough == on) return true;
+        _hotkeys.Pressed -= OnHotkeyPressed;
+        _hotkeys.Dispose();
+        _hotkeys = CreateListener(on);
+        // A hook that failed to install would leave every hotkey dead, so keep normal mode.
+        bool isActive = _hotkeys is not KeyboardHookListener { IsInstalled: false };
+        if (!isActive)
+        {
+            _hotkeys.Dispose();
+            _hotkeys = new HotkeyListener();
+        }
+        _hotkeys.Pressed += OnHotkeyPressed;
+        if (isActive)
+        {
+            Settings.HotkeyPassthrough = on;
+            Save();
+        }
+        RegisterHotkeys();
+        return isActive;
     }
 
     private bool _isShutDown;
