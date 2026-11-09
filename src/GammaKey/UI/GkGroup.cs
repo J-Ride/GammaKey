@@ -10,16 +10,37 @@ public sealed class GkGroup : Panel
         Hint = hint;
         SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.UserPaint | ControlStyles.ResizeRedraw, true);
         BackColor = Theme.Panel;
-        AutoSize = true;
-        AutoSizeMode = AutoSizeMode.GrowAndShrink;
         Padding = new Padding(Theme.Space3, HeaderHeight + Theme.Space2, Theme.Space3, Theme.Space2);
         Content = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, WrapContents = false, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Dock = DockStyle.Top, BackColor = Theme.Panel, Margin = Padding.Empty };
         Controls.Add(Content);
+        Content.Layout += (_, _) => FitToContent();
     }
 
     public string Title { get; }
     public string Hint { get; }
     public FlowLayoutPanel Content { get; }
+
+    protected override void OnResize(EventArgs e)
+    {
+        base.OnResize(e);
+        FitToContent();
+    }
+
+    // Width comes from the owner; only the height follows the content. A TopDown flow panel does
+    // not stretch its children, so each row is widened to the inner width here.
+    private void FitToContent()
+    {
+        int inner = Width - Padding.Horizontal;
+        // An AutoSize panel ignores Dock width, so pin its minimum width instead.
+        if (Content.MinimumSize.Width != inner) Content.MinimumSize = new Size(inner, 0);
+        foreach (Control c in Content.Controls)
+        {
+            int w = inner - c.Margin.Horizontal;
+            if (w > 0 && c.Width != w) c.Width = w;
+        }
+        int h = Content.Bottom + Padding.Bottom;
+        if (Height != h) Height = h;
+    }
 
     protected override void OnPaint(PaintEventArgs e)
     {

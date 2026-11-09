@@ -137,7 +137,7 @@ public sealed class MainForm : Form
 
         var railActions = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, WrapContents = false, AutoSize = true, Dock = DockStyle.Bottom, BackColor = Theme.Panel, Padding = new Padding(Theme.Space3, Theme.Space2, Theme.Space3, Theme.Space3), Margin = Padding.Empty };
         railActions.Paint += (_, e) => { using var p = new Pen(Theme.Line); e.Graphics.DrawLine(p, 0, 0, railActions.Width, 0); };
-        var iconRow = new TableLayoutPanel { ColumnCount = 5, AutoSize = true, Width = 272 - 2 * Theme.Space3 - 1, Height = Theme.ControlHeight, Margin = new Padding(0, 0, 0, Theme.Space2), BackColor = Theme.Panel };
+        var iconRow = new TableLayoutPanel { ColumnCount = 5, Width = 272 - 2 * Theme.Space3 - 1, Height = Theme.ControlHeight, Margin = new Padding(0, 0, 0, Theme.Space2), BackColor = Theme.Panel };
         for (int i = 0; i < 5; i++) iconRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20));
         iconRow.Controls.Add(IconButton(GkIcon.Add, "Add profile", (_, _) => AddProfile(), isPrimary: true), 0, 0);
         iconRow.Controls.Add(IconButton(GkIcon.Duplicate, "Duplicate profile", (_, _) => DuplicateProfile()), 1, 0);
@@ -186,7 +186,7 @@ public sealed class MainForm : Form
         body.Controls.Add(editor, 1, 0);
 
         // Groups stretch to the editor width; FlowLayoutPanel does not do that itself.
-        editor.Resize += (_, _) =>
+        editor.Layout += (_, _) =>
         {
             int w = editor.ClientSize.Width - editor.Padding.Horizontal;
             foreach (Control c in editor.Controls) if (c is GkGroup) c.Width = w;
@@ -235,7 +235,7 @@ public sealed class MainForm : Form
     // One grid per row so labels share a column and the input stretches to the row's right edge.
     private static TableLayoutPanel FormRow(Label label, Control input)
     {
-        var panel = new TableLayoutPanel { ColumnCount = 2, RowCount = 1, Margin = new Padding(0, 2, 0, 2), Dock = DockStyle.Top, Height = Theme.ControlHeight + 6, BackColor = Theme.Panel };
+        var panel = new TableLayoutPanel { ColumnCount = 2, RowCount = 1, Margin = new Padding(0, 2, 0, 2), Height = Theme.ControlHeight + 6, BackColor = Theme.Panel };
         panel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, Theme.LabelColumnWidth));
         panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         label.AutoSize = true;
@@ -284,7 +284,7 @@ public sealed class MainForm : Form
         bar.MouseCaptureChanged += (_, _) => SaveIfEditing();
         bar.MouseWheel += (_, _) => SaveIfEditing();
 
-        var panel = new TableLayoutPanel { ColumnCount = 3, RowCount = 1, Margin = new Padding(0, 2, 0, 2), Dock = DockStyle.Top, Height = bar.Height + 4, BackColor = Theme.Panel };
+        var panel = new TableLayoutPanel { ColumnCount = 3, RowCount = 1, Margin = new Padding(0, 2, 0, 2), Height = bar.Height + 4, BackColor = Theme.Panel };
         panel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, Theme.LabelColumnWidth));
         panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         panel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 72 + Theme.Space3));
