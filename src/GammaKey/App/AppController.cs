@@ -99,6 +99,11 @@ public sealed class AppController : IDisposable
     public ApplyResult Preview(ColorValues values, MonitorTarget target)
     {
         var monitors = Display.ResolveTargets(target, out var note);
+        // A profile owns the whole desk: monitors it does not target go back to original, or they
+        // would keep the last curve written to them for ever.
+        var others = DisplayEngine.OtherDevices(Display.GetMonitors(), monitors);
+        Display.RestoreBaseline(_baseline, others);
+        if (Vibrance.IsAvailable) Vibrance.RestoreBaseline(_baseline, others);
         var result = Display.Apply(values, monitors);
         if (Vibrance.IsAvailable)
             foreach (var monitor in monitors) Vibrance.SetSlider(monitor.DeviceName, values.Vibrance);

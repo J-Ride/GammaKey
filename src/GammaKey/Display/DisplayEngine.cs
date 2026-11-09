@@ -54,6 +54,19 @@ public sealed class DisplayEngine
         ClearActive();
     }
 
+    public void RestoreBaseline(Baseline from, IEnumerable<string> deviceNames)
+    {
+        // Leaves the guard target alone: only the monitors outside the profile go back to original.
+        foreach (var deviceName in deviceNames)
+            if (from.Ramps.TryGetValue(deviceName, out var ramp)) GammaRampNative.Set(deviceName, ramp);
+    }
+
+    public static IReadOnlyList<string> OtherDevices(IReadOnlyList<MonitorInfo> all, IReadOnlyList<MonitorInfo> targets)
+    {
+        var targeted = new HashSet<string>(targets.Select(m => m.DeviceName), StringComparer.OrdinalIgnoreCase);
+        return all.Where(m => !targeted.Contains(m.DeviceName)).Select(m => m.DeviceName).ToList();
+    }
+
     public void ResetToIdentity()
     {
         var identity = CurveBuilder.Build(ColorValues.Normal);

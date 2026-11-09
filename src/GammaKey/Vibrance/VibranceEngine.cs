@@ -89,6 +89,12 @@ public sealed class VibranceEngine
             SetRaw(device, level);
     }
 
+    public void RestoreBaseline(Baseline from, IEnumerable<string> deviceNames)
+    {
+        foreach (var deviceName in deviceNames)
+            if (from.VibranceLevels.TryGetValue(deviceName, out var level)) SetRaw(deviceName, level);
+    }
+
     private void RefreshHandles()
     {
         _handlesByDevice.Clear();
