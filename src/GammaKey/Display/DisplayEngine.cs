@@ -92,7 +92,12 @@ public sealed class DisplayEngine
         }
 
         if (anyRefused && !anyAccepted)
+        {
+            // Preview restores these monitors after a refusal, so the previous profile's ramp
+            // must not stay the guard target or it would be written straight back.
+            ClearActive();
             return new ApplyResult(false, "Windows refused this curve, reduce the sliders");
+        }
 
         // Only an accepted table becomes the guard's target; a refused one would be
         // rewritten on every tick for nothing.

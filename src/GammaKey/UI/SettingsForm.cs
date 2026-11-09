@@ -95,6 +95,10 @@ public sealed class SettingsForm : Form
                 _loading = false;
                 _status.Text = "Could not start pass-through. Hotkeys stay in normal mode.";
             }
+            else
+            {
+                _status.Text = "";
+            }
         };
     }
 

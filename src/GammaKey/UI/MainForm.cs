@@ -80,7 +80,7 @@ public sealed class MainForm : Form
         root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         Controls.Add(root);
 
-        // Left: profile list, its buttons, then the Settings button. App settings live in a dialog.
+        // Left: profile list, its buttons, then the Settings and Restore monitor buttons. App settings live in a dialog.
         var left = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 4, Margin = Padding.Empty };
         left.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         // Explicit rows: a content-sized row holding a Dock=Fill AutoSize panel is circular and
