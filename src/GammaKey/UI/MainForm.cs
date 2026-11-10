@@ -59,7 +59,6 @@ public sealed class MainForm : Form
         WindowChrome.Apply(this);
         Width = 960;
         Height = 680;
-        MinimumSize = new Size(860, 600);
         AutoScaleDimensions = new SizeF(96f, 96f);
         AutoScaleMode = AutoScaleMode.Dpi;
         Icon = TrayIcon.CreateIcon();
@@ -90,6 +89,8 @@ public sealed class MainForm : Form
         Theme.Apply(this);
         // Every control now exists; a control added after this line would not be scaled.
         ResumeLayout(true);
+        // Set after the scale pass, in device pixels, so the pass can neither skip nor double it.
+        MinimumSize = new Size(Theme.Scale(860, DeviceDpi), Theme.Scale(600, DeviceDpi));
         LoadMonitorsIntoTarget();
         RefreshProfileList();
         RefreshStatus();
@@ -110,6 +111,12 @@ public sealed class MainForm : Form
         if (!Visible) Show();
         if (WindowState == FormWindowState.Minimized) WindowState = FormWindowState.Normal;
         Activate();
+    }
+
+    protected override void OnDpiChanged(DpiChangedEventArgs e)
+    {
+        base.OnDpiChanged(e);
+        MinimumSize = new Size(Theme.Scale(860, e.DeviceDpiNew), Theme.Scale(600, e.DeviceDpiNew));
     }
 
     private void BuildLayout()
