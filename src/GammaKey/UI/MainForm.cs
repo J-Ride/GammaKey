@@ -45,7 +45,12 @@ public sealed class MainForm : Form
     private readonly Dictionary<GkSlider, GkNumber> _numbers = new();
     private readonly List<GkIconButton> _profileButtons = new();
 
+    // _saved is the profile inside Settings.Profiles; _editing is its working copy. Edits and
+    // previews touch _editing only, so Revert is a fresh copy and nothing is written until Apply.
+    private Profile? _saved;
     private Profile? _editing;
+    private readonly Button _applyButton = new() { Text = "Apply", AutoSize = true, MinimumSize = new Size(72, Theme.ControlHeight), Margin = Padding.Empty, Enabled = false };
+    private readonly Button _revertButton = new() { Text = "Revert", AutoSize = true, MinimumSize = new Size(72, Theme.ControlHeight), Margin = new Padding(0, 0, Theme.Space2, 0), Enabled = false };
     private string? _activeProfileId;
     private bool _loading;
 
@@ -59,7 +64,6 @@ public sealed class MainForm : Form
         WindowChrome.Apply(this);
         Width = 960;
         Height = 680;
-        MinimumSize = new Size(860, 600);
         AutoScaleDimensions = new SizeF(96f, 96f);
         AutoScaleMode = AutoScaleMode.Dpi;
         Icon = TrayIcon.CreateIcon();
@@ -88,8 +92,11 @@ public sealed class MainForm : Form
 
         BuildLayout();
         Theme.Apply(this);
+        Theme.StylePrimary(_applyButton);
         // Every control now exists; a control added after this line would not be scaled.
         ResumeLayout(true);
+        // Set after the scale pass, in device pixels, so the pass can neither skip nor double it.
+        MinimumSize = new Size(Theme.Scale(860, DeviceDpi), Theme.Scale(600, DeviceDpi));
         LoadMonitorsIntoTarget();
         RefreshProfileList();
         RefreshStatus();
@@ -103,6 +110,7 @@ public sealed class MainForm : Form
             LoadSelectedProfile(apply: false);
         }
         SetEditorEnabled(_editing is not null);
+        RefreshDirty();
     }
 
     public void ShowAndFocus()
@@ -110,6 +118,22 @@ public sealed class MainForm : Form
         if (!Visible) Show();
         if (WindowState == FormWindowState.Minimized) WindowState = FormWindowState.Normal;
         Activate();
+    }
+
+    // Runs before any action that leaves the current profile. Both answers finish the action:
+    // Save and Apply writes the edits first, Discard changes drops them. Hotkeys never call this.
+    public void ResolveUnsavedEdits()
+    {
+        if (!IsDirty || _editing is null) return;
+        var choice = UnsavedChangesDialog.Ask(Visible && WindowState != FormWindowState.Minimized ? this : null, _editing.Name);
+        if (choice == UnsavedChoice.SaveAndApply) ApplyEdits();
+        else RevertEdits();
+    }
+
+    protected override void OnDpiChanged(DpiChangedEventArgs e)
+    {
+        base.OnDpiChanged(e);
+        MinimumSize = new Size(Theme.Scale(860, e.DeviceDpiNew), Theme.Scale(600, e.DeviceDpiNew));
     }
 
     private void BuildLayout()
@@ -180,6 +204,14 @@ public sealed class MainForm : Form
         two.Controls.Add(hotkeyRow, 0, 0);
         two.Controls.Add(targetRow, 1, 0);
         profileGroup.Content.Controls.Add(two);
+        // Right aligned: RightToLeft flow puts the first control at the right edge, so Apply
+        // sits at the far right with Revert to its left. GkGroup widens the row to the group.
+        var editActions = new FlowLayoutPanel { FlowDirection = FlowDirection.RightToLeft, AutoSize = false, Height = Theme.ControlHeight + 4, Margin = new Padding(0, Theme.Space1, 0, 0), BackColor = Theme.Panel };
+        editActions.Controls.Add(_applyButton);
+        editActions.Controls.Add(_revertButton);
+        _applyButton.Click += (_, _) => ApplyEdits();
+        _revertButton.Click += (_, _) => RevertEdits();
+        profileGroup.Content.Controls.Add(editActions);
         editor.Controls.Add(profileGroup);
 
         var curveGroup = new GkGroup("Curve", "GDI gamma ramp");
@@ -225,10 +257,13 @@ public sealed class MainForm : Form
         bar.Controls.Add(_savedLine, 2, 0);
         root.Controls.Add(bar, 0, 2);
 
-        _nameBox.TextChanged += (_, _) => { if (_editing is not null && !_loading) { _editing.Name = _nameBox.Text; _heading.Text = _nameBox.Text; _controller.Save(); } };
-        _hotkeyBox.ComboChanged += (_, _) => { if (_editing is not null && !_loading) { _editing.Hotkey = _hotkeyBox.Combo; SaveSettingsAndRegister(_hotkeyBox); } };
-        _targetBox.SelectedIndexChanged += (_, _) => { if (_editing is not null && !_loading) { _editing.Target = TargetFromCombo(); _controller.Save(); _status.Text = _controller.ApplyProfile(_editing).Note ?? ""; } };
-        _profileList.SelectedIndexChanged += (_, _) => LoadSelectedProfile();
+        _nameBox.TextChanged += (_, _) => { if (_editing is not null && !_loading) { _editing.Name = _nameBox.Text; RefreshDirty(); } };
+        _hotkeyBox.ComboChanged += (_, _) => { if (_editing is not null && !_loading) { _editing.Hotkey = _hotkeyBox.Combo; _hotkeyBox.IsRefused = false; RefreshDirty(); } };
+        // A new target previews the working copy there; it is saved and made active only by Apply.
+        _targetBox.SelectedIndexChanged += (_, _) => { if (_editing is not null && !_loading) { _editing.Target = TargetFromCombo(); _status.Text = _controller.Preview(_editing.Values, _editing.Target).Note ?? ""; RefreshDirty(); } };
+        // The list has already moved, but _saved and _editing still point at the previous
+        // profile, so the dialog's choice lands on that one before the new row loads.
+        _profileList.SelectedIndexChanged += (_, _) => { if (_loading) return; _status.Text = ""; ResolveUnsavedEdits(); LoadSelectedProfile(); };
 
         if (!_controller.Vibrance.IsAvailable)
         {
@@ -295,14 +330,7 @@ public sealed class MainForm : Form
             bar.Value = isGamma ? (int)Math.Round(number.Value * 100) : (int)number.Value;
             _loading = false;
             PushValuesToProfileAndPreview();
-            SaveIfEditing();
         };
-        // Saving on every drag tick would write the file many times a second, so save when
-        // the drag or key press ends. A capture loss (Alt+Tab mid-drag) also ends the drag.
-        bar.MouseUp += (_, _) => SaveIfEditing();
-        bar.KeyUp += (_, _) => SaveIfEditing();
-        bar.MouseCaptureChanged += (_, _) => SaveIfEditing();
-        bar.MouseWheel += (_, _) => SaveIfEditing();
 
         var panel = new TableLayoutPanel { ColumnCount = 3, RowCount = 1, Margin = new Padding(0, 2, 0, 2), Height = bar.Height + 4, BackColor = Theme.Panel };
         panel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, Theme.LabelColumnWidth));
@@ -399,7 +427,7 @@ public sealed class MainForm : Form
         // Duplicate and Delete need a selection; Add, Import and Export never do.
         _profileButtons[1].Enabled = on;
         _profileButtons[2].Enabled = on;
-        if (!on) { _heading.Text = "No profile selected"; _activeTag.Visible = false; }
+        if (!on) _activeTag.Visible = false;
     }
 
     private void RefreshProfileList(bool keepSelection = false)
@@ -415,12 +443,25 @@ public sealed class MainForm : Form
     {
         if (_loading) return;
         var index = _profileList.SelectedIndex;
-        if (index < 0 || index >= _controller.Settings.Profiles.Count) { _editing = null; SetEditorEnabled(false); return; }
-        _editing = _controller.Settings.Profiles[index];
+        if (index < 0 || index >= _controller.Settings.Profiles.Count) { ClearEditor(); return; }
+        _saved = _controller.Settings.Profiles[index];
+        _editing = _saved.CopyForEditing();
         SetEditorEnabled(true);
-        _heading.Text = _editing.Name;
         _activeTag.Visible = _editing.Id == _activeProfileId;
+        ShowEditing();
+        _hotkeyBox.IsRefused = false;
+        RefreshDirty();
+        if (!apply) return;
+        // Clicking a profile is the same as pressing its hotkey: the screen changes at once.
+        var result = _controller.ApplyProfile(_saved);
+        // Append: on the list path the guard's Save and Apply may have left a refused-hotkey warning.
+        if (result.Note is not null) _status.Text = string.Join(" ", new[] { _status.Text, result.Note }.Where(s => s.Length > 0));
+    }
 
+    // Pushes the working copy into every editor control without firing their change handlers.
+    private void ShowEditing()
+    {
+        if (_editing is null) return;
         _loading = true;
         _nameBox.Text = _editing.Name;
         _hotkeyBox.Combo = _editing.Hotkey;
@@ -440,11 +481,60 @@ public sealed class MainForm : Form
         foreach (var (bar, number) in _numbers)
             number.Value = ReferenceEquals(bar, _gamma) ? bar.Value / 100m : bar.Value;
         _loading = false;
+    }
+
+    private void ClearEditor()
+    {
+        _saved = null;
+        _editing = null;
+        SetEditorEnabled(false);
+        RefreshDirty();
+    }
+
+    private bool IsDirty => _saved is not null && _editing is not null && !_editing.HasSameContentAs(_saved);
+
+    // The heading, Apply and Revert all follow the dirty state, so they change in one place.
+    private void RefreshDirty()
+    {
+        bool dirty = IsDirty;
+        _applyButton.Enabled = dirty;
+        _revertButton.Enabled = dirty;
+        _heading.Text = _editing is null ? "No profile selected" : (dirty ? _editing.Name + " *" : _editing.Name);
+    }
+
+    private void ApplyEdits()
+    {
+        if (_saved is null || _editing is null) return;
+        // Only a changed hotkey earns the no-modifier warning; a slider tweak must not repeat it.
+        bool hotkeyChanged = _saved.Hotkey != _editing.Hotkey;
+        var before = _saved.CopyForEditing();
+        try
+        {
+            _saved.CopyContentFrom(_editing);
+            SaveSettingsAndRegister(_hotkeyBox, warnNoModifier: hotkeyChanged);
+            var result = _controller.ApplyProfile(_saved);
+            if (result.Note is not null) _status.Text = string.Join(" ", new[] { _status.Text, result.Note }.Where(s => s.Length > 0));
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            // The save failed after the edits reached _saved: restore it so the editor stays dirty,
+            // and re-register because hotkeys were armed from the edited profile before the save.
+            _saved.CopyContentFrom(before);
+            _controller.RegisterHotkeys();
+            _status.Text = "Could not save profiles.json. Your edits are still in the editor.";
+        }
+        RefreshDirty();
+    }
+
+    private void RevertEdits()
+    {
+        if (_saved is null) return;
+        _editing = _saved.CopyForEditing();
+        ShowEditing();
         _hotkeyBox.IsRefused = false;
-        if (!apply) return;
-        // Clicking a profile is the same as pressing its hotkey: the screen changes at once.
-        var result = _controller.ApplyProfile(_editing);
-        _status.Text = result.Note ?? "";
+        // The screen followed the working copy while it was edited; put the saved look back.
+        _status.Text = _controller.Preview(_saved.Values, _saved.Target).Note ?? "";
+        RefreshDirty();
     }
 
     private ColorValues CurrentValues() => new(_gamma.Value / 100.0, _brightness.Value, _contrast.Value, _shadows.Value, _highlights.Value, _vibrance.Value)
@@ -462,14 +552,10 @@ public sealed class MainForm : Form
         _editing.Values = CurrentValues();
         var result = _controller.Preview(_editing.Values, _editing.Target);
         _status.Text = result.Note ?? "";
+        RefreshDirty();
     }
 
-    private void SaveIfEditing()
-    {
-        if (_editing is not null && !_loading) _controller.Save();
-    }
-
-    private void SaveSettingsAndRegister(GkHotkeyBox? changedBox = null)
+    private void SaveSettingsAndRegister(GkHotkeyBox? changedBox = null, bool warnNoModifier = true)
     {
         // Register before Save so the armed-hotkeys chip refreshed by SettingsChanged is current.
         var failed = _controller.RegisterHotkeys();
@@ -482,13 +568,14 @@ public sealed class MainForm : Form
             // the no-modifier warning depend only on the edited profile.
             bool isRefused = _editing is not null && failed.Contains(_editing.Name);
             changedBox.IsRefused = isRefused;
-            if (!isRefused && changedBox.Combo.Length > 0 && !HotkeyCombo.HasModifier(changedBox.Combo) && !_controller.Settings.HotkeyPassthrough) messages.Add(HotkeyCombo.NoModifierWarning);
+            if (warnNoModifier && !isRefused && changedBox.Combo.Length > 0 && !HotkeyCombo.HasModifier(changedBox.Combo) && !_controller.Settings.HotkeyPassthrough) messages.Add(HotkeyCombo.NoModifierWarning);
         }
         _status.Text = string.Join(" ", messages);
     }
 
     private void AddProfile()
     {
+        ResolveUnsavedEdits();
         var profile = new Profile();
         _controller.Settings.Profiles.Add(profile);
         SaveSettingsAndRegister();
@@ -497,9 +584,10 @@ public sealed class MainForm : Form
 
     private void DuplicateProfile()
     {
-        if (_editing is null) return;
-        var copy = _editing.Clone();
-        copy.Name = _editing.Name + " copy";
+        ResolveUnsavedEdits();
+        if (_saved is null) return;
+        var copy = _saved.Clone();
+        copy.Name = _saved.Name + " copy";
         _controller.Settings.Profiles.Add(copy);
         SaveSettingsAndRegister();
         _profileList.SelectedIndex = _controller.Settings.Profiles.Count - 1;
@@ -507,9 +595,10 @@ public sealed class MainForm : Form
 
     private void DeleteProfile()
     {
-        if (_editing is null) return;
-        var index = _controller.Settings.Profiles.IndexOf(_editing);
-        _controller.Settings.Profiles.Remove(_editing);
+        ResolveUnsavedEdits();
+        if (_saved is null) return;
+        var index = _controller.Settings.Profiles.IndexOf(_saved);
+        _controller.Settings.Profiles.Remove(_saved);
         SaveSettingsAndRegister();
         if (_profileList.Items.Count > 0)
         {
@@ -520,18 +609,26 @@ public sealed class MainForm : Form
             _loading = false;
             LoadSelectedProfile();
         }
-        else { _editing = null; SetEditorEnabled(false); }
+        else ClearEditor();
     }
 
     private void ExportProfiles()
     {
-        using var dialog = new SaveFileDialog { Filter = ProfileFileFilter, FileName = "GammaKey-profiles.json", DefaultExt = "json" };
+        ResolveUnsavedEdits();
+        var scope = ExportChoiceDialog.Ask(this, hasSelection: _saved is not null);
+        if (scope is null) return;
+        bool single = scope == ExportScope.Selected && _saved is not null;
+        // The saved profile goes out, never the working copy; the guard above has settled it.
+        AppSettings payload = single ? ProfileExport.Single(_saved!) : _controller.Settings;
+        string fileName = single ? ProfileExport.SuggestedFileName(_saved!.Name) : "GammaKey-profiles.json";
+        using var dialog = new SaveFileDialog { Filter = ProfileFileFilter, FileName = fileName, DefaultExt = "json" };
         if (dialog.ShowDialog(this) != DialogResult.OK) return;
         try
         {
             // Same shape as profiles.json, so an export and a copied profiles.json both import.
-            File.WriteAllText(dialog.FileName, JsonSerializer.Serialize(_controller.Settings, ProfileStore.JsonOptions));
-            _status.Text = $"Exported {_controller.Settings.Profiles.Count} profiles.";
+            File.WriteAllText(dialog.FileName, JsonSerializer.Serialize(payload, ProfileStore.JsonOptions));
+            int count = payload.Profiles.Count;
+            _status.Text = count == 1 ? "Exported 1 profile." : $"Exported {count} profiles.";
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
@@ -541,6 +638,7 @@ public sealed class MainForm : Form
 
     private void ImportProfiles()
     {
+        ResolveUnsavedEdits();
         using var dialog = new OpenFileDialog { Filter = ProfileFileFilter };
         if (dialog.ShowDialog(this) != DialogResult.OK) return;
 
@@ -577,6 +675,7 @@ public sealed class MainForm : Form
         // Closing the window hides to the tray; Quit in the tray menu ends the app.
         if (e.CloseReason == CloseReason.UserClosing)
         {
+            ResolveUnsavedEdits();
             e.Cancel = true;
             Hide();
         }
@@ -584,6 +683,7 @@ public sealed class MainForm : Form
 
     private void OpenSettings()
     {
+        ResolveUnsavedEdits();
         using var dialog = new SettingsForm(_controller);
         dialog.ShowDialog(this);
     }

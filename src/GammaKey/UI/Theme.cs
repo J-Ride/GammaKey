@@ -70,6 +70,24 @@ public static class Theme
         foreach (Control child in root.Controls) ApplyRecursive(child);
     }
 
+    // An accent-filled text button, the text counterpart of GkIconButton.IsPrimary. Call after
+    // Apply(root), which paints every Button with the standard surface first. Disabled falls back
+    // to the standard look so a grey accent block never appears.
+    public static void StylePrimary(Button button)
+    {
+        void Paint()
+        {
+            bool on = button.Enabled;
+            button.BackColor = on ? Accent : Surface;
+            button.ForeColor = on ? Background : TextDim;
+            button.FlatAppearance.BorderColor = on ? Accent : Line;
+            button.FlatAppearance.MouseOverBackColor = on ? AccentDim : Raised;
+        }
+        button.FlatStyle = FlatStyle.Flat;
+        button.EnabledChanged += (_, _) => Paint();
+        Paint();
+    }
+
     // Only the few stock controls that remain are styled here; the Gk* controls paint themselves.
     private static void ApplyRecursive(Control control)
     {

@@ -33,8 +33,8 @@ public sealed class GkHotkeyBox : Control
         set { _isRefused = value; Invalidate(); }
     }
 
-    // Every edit auto-saves, so Escape must not clear a hotkey; it goes to the form so a
-    // dialog's CancelButton still closes it.
+    // Escape must not clear a hotkey (Revert is the way back); it goes to the form so a dialog's
+    // CancelButton still closes it.
     protected override bool IsInputKey(Keys keyData) =>
         keyData is not (Keys.Tab or (Keys.Tab | Keys.Shift)) && (keyData & Keys.KeyCode) != Keys.Escape;
 
@@ -89,7 +89,7 @@ public sealed class GkHotkeyBox : Control
             Color chipText = !Enabled ? Theme.TextDim : (_isRefused ? Theme.Warning : Theme.TextPrimary);
             foreach (var part in parts)
             {
-                x = DrawChip(g, part, x, Height, DeviceDpi, chipText, _isRefused ? Theme.Warning : Theme.LineStrong) + S(Theme.Space1);
+                x = DrawChip(g, part, x, 0, Height, DeviceDpi, chipText, _isRefused ? Theme.Warning : Theme.LineStrong) + S(Theme.Space1);
             }
         }
 
@@ -98,14 +98,16 @@ public sealed class GkHotkeyBox : Control
             TextRenderer.DrawText(g, hint, Theme.Caption, new Rectangle(0, 0, Width - S(Theme.Space2), Height), _isRefused && !Focused ? Theme.Warning : Theme.TextDim, TextFormatFlags.Right | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
     }
 
-    // A keycap: mono text in a box with a 2 px bottom edge, centred on a line of lineHeight device
-    // pixels. Shared look with the profile list.
-    internal static int DrawChip(Graphics g, string text, int x, int lineHeight, float dpi, Color textColor, Color border)
+    // A keycap: mono text in a box with a 2 px bottom edge, centred on a line that starts at y and
+    // is lineHeight device pixels tall. Shared look with the profile list. The caller passes y
+    // instead of translating the Graphics because TextRenderer draws with GDI and ignores GDI+
+    // transforms, so a translated chip would keep its box but lose its text to row 0.
+    internal static int DrawChip(Graphics g, string text, int x, int y, int lineHeight, float dpi, Color textColor, Color border)
     {
         var size = TextRenderer.MeasureText(g, text, Theme.MonoSmall, Size.Empty, TextFormatFlags.NoPadding);
         int h = size.Height + Theme.Scale(6, dpi);
         int w = size.Width + Theme.Scale(12, dpi);
-        var chip = new Rectangle(x, (lineHeight - h) / 2 - 1, w, h);
+        var chip = new Rectangle(x, y + (lineHeight - h) / 2 - 1, w, h);
         using (var b = new SolidBrush(Theme.Background)) Theme.FillRounded(g, b, chip, 3);
         using (var p = new Pen(border)) Theme.DrawRounded(g, p, chip, 3);
         using (var bottom = new Pen(border, 2f)) g.DrawLine(bottom, chip.Left + 3, chip.Bottom, chip.Right - 3, chip.Bottom);

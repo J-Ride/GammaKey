@@ -60,6 +60,16 @@ public sealed class GkSlider : Control
         return _minimum + (int)Math.Round(fraction * (_maximum - _minimum));
     }
 
+    // Where the centre scale label sits. An origin at the minimum (Vibrance, Black floor) has no
+    // label of its own, so the middle value is drawn in the middle. Any other origin is labelled
+    // under its own position on the track, so Gamma's "1.00" sits where the thumb rests at 1.00.
+    public static int CentreLabelX(int minimum, int maximum, int origin, Rectangle track, int width)
+    {
+        if (origin <= minimum || maximum == minimum) return width / 2;
+        double fraction = (Math.Clamp(origin, minimum, maximum) - minimum) / (double)(maximum - minimum);
+        return track.Left + (int)Math.Round(fraction * track.Width);
+    }
+
     protected override void OnPaint(PaintEventArgs e)
     {
         var g = e.Graphics;
@@ -105,8 +115,12 @@ public sealed class GkSlider : Control
         var scaleColor = Enabled ? Theme.TextDim : Theme.Raised;
         // An origin at the minimum (Vibrance) has no useful label of its own, so the middle value stands in.
         int centreValue = Origin <= _minimum ? (_minimum + _maximum) / 2 : Math.Clamp(Origin, _minimum, _maximum);
+        string centreText = formatter(centreValue);
+        int centreWidth = TextRenderer.MeasureText(g, centreText, Theme.MonoSmall, Size.Empty, TextFormatFlags.NoPadding).Width;
+        int centreX = CentreLabelX(_minimum, _maximum, Origin, track, Width);
+        var centreRect = new Rectangle(centreX - centreWidth / 2, scaleRect.Top, centreWidth, scaleRect.Height);
         TextRenderer.DrawText(g, formatter(_minimum), Theme.MonoSmall, scaleRect, scaleColor, TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
-        TextRenderer.DrawText(g, formatter(centreValue), Theme.MonoSmall, scaleRect, scaleColor, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
+        TextRenderer.DrawText(g, centreText, Theme.MonoSmall, centreRect, scaleColor, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
         TextRenderer.DrawText(g, formatter(_maximum), Theme.MonoSmall, scaleRect, scaleColor, TextFormatFlags.Right | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
     }
 
