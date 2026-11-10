@@ -50,7 +50,9 @@ public sealed class GkGroup : Panel
         var r = new Rectangle(0, 0, Width - 1, Height - 1);
         using (var b = new SolidBrush(Theme.Panel)) Theme.FillRounded(g, b, r, Theme.Radius + 1);
         using (var p = new Pen(Theme.Line)) Theme.DrawRounded(g, p, r, Theme.Radius + 1);
-        var head = new Rectangle(Theme.Space3, Theme.Space2, Width - 2 * Theme.Space3, HeaderHeight - Theme.Space2);
+        // Padding is scaled by the form's pass; the header band drawn here must match it.
+        int S(int v) => Theme.Scale(v, DeviceDpi);
+        var head = new Rectangle(S(Theme.Space3), S(Theme.Space2), Width - 2 * S(Theme.Space3), S(HeaderHeight) - S(Theme.Space2));
         TextRenderer.DrawText(g, Title.ToUpperInvariant(), Theme.Eyebrow, head, Theme.TextMuted, TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
         if (Hint.Length > 0)
             TextRenderer.DrawText(g, Hint, Theme.MonoSmall, head, Theme.TextDim, TextFormatFlags.Right | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);

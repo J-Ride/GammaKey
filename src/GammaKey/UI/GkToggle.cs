@@ -44,26 +44,28 @@ public sealed class GkToggle : Control
         var g = e.Graphics;
         g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
         g.Clear(Parent?.BackColor ?? Theme.Panel);
+        int S(int v) => Theme.Scale(v, DeviceDpi);
 
-        var sw = new Rectangle(Width - SwitchWidth - 1, (Height - SwitchHeight) / 2, SwitchWidth, SwitchHeight);
+        int switchWidth = S(SwitchWidth), switchHeight = S(SwitchHeight), inset = S(3);
+        var sw = new Rectangle(Width - switchWidth - 1, (Height - switchHeight) / 2, switchWidth, switchHeight);
         using (var back = new SolidBrush(_checked ? Theme.AccentDim : Theme.Raised)) Theme.FillRounded(g, back, sw, 3);
         using (var border = new Pen(_checked ? Theme.Accent : (Focused || _hover ? Theme.TextMuted : Theme.LineStrong))) Theme.DrawRounded(g, border, sw, 3);
-        int knob = SwitchHeight - 6;
-        var knobRect = new Rectangle(_checked ? sw.Right - knob - 3 : sw.Left + 3, sw.Top + 3, knob, knob);
+        int knob = switchHeight - 2 * inset;
+        var knobRect = new Rectangle(_checked ? sw.Right - knob - inset : sw.Left + inset, sw.Top + inset, knob, knob);
         using (var kb = new SolidBrush(_checked ? Color.White : Theme.TextMuted)) Theme.FillRounded(g, kb, knobRect, 2);
 
-        int textRight = sw.Left - Theme.Space3;
+        int textRight = sw.Left - S(Theme.Space3);
         bool hasFlag = !string.IsNullOrEmpty(Flag);
         var flagSize = hasFlag ? TextRenderer.MeasureText(g, Flag, Theme.MonoSmall, Size.Empty, TextFormatFlags.NoPadding) : Size.Empty;
-        int flagWidth = hasFlag ? flagSize.Width + 10 : 0;
-        int titleMax = Math.Max(0, hasFlag ? textRight - flagWidth - Theme.Space2 : textRight);
+        int flagWidth = hasFlag ? flagSize.Width + S(10) : 0;
+        int titleMax = Math.Max(0, hasFlag ? textRight - flagWidth - S(Theme.Space2) : textRight);
         var titleSize = TextRenderer.MeasureText(g, Text, Theme.Label, new Size(titleMax, Height), TextFormatFlags.NoPadding | TextFormatFlags.EndEllipsis);
-        var titleRect = new Rectangle(0, Theme.Space1, titleMax, titleSize.Height);
+        var titleRect = new Rectangle(0, S(Theme.Space1), titleMax, titleSize.Height);
         TextRenderer.DrawText(g, Text, Theme.Label, titleRect, Enabled ? Theme.TextPrimary : Theme.TextDim, TextFormatFlags.Left | TextFormatFlags.NoPadding | TextFormatFlags.EndEllipsis);
         if (hasFlag)
         {
-            int flagLeft = Math.Min(titleSize.Width + Theme.Space2, textRight - flagWidth);
-            var flagRect = new Rectangle(flagLeft, titleRect.Top + 1, flagWidth, flagSize.Height + 3);
+            int flagLeft = Math.Min(titleSize.Width + S(Theme.Space2), textRight - flagWidth);
+            var flagRect = new Rectangle(flagLeft, titleRect.Top + 1, flagWidth, flagSize.Height + S(3));
             using var fp = new Pen(Color.FromArgb(115, Theme.Warning));
             Theme.DrawRounded(g, fp, flagRect, 3);
             TextRenderer.DrawText(g, Flag, Theme.MonoSmall, flagRect, Theme.Warning, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
