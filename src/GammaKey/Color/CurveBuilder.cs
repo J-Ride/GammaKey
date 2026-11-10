@@ -11,8 +11,9 @@ public static class CurveBuilder
     // non-decreasing, which Windows requires.
     private const double RegionStrength = 0.25;
 
-    // A channel gain of more than 30 percent clips mid tones to white; the clamp keeps the
-    // combined Temperature plus RGB slider inside that limit.
+    // Each slider moves a channel by up to 30 percent; Temperature and the RGB slider for the
+    // same channel can stack to 60 percent. The clamp is a guard on that sum. At 1.6 the top
+    // third of the range already clips to white, so the sliders stop there.
     private const double GainStrength = 0.3;
     private const double GainMin = 1.0 - GainStrength * 2;
     private const double GainMax = 1.0 + GainStrength * 2;
@@ -54,9 +55,9 @@ public static class CurveBuilder
 
             for (int c = 0; c < 3; c++)
             {
-                double yc = y * gains[c];
+                double yc = Math.Clamp(y * gains[c], 0.0, 1.0);
                 yc = floor + yc * (1.0 - floor);
-                var value = (ushort)Math.Round(Math.Clamp(yc, 0.0, 1.0) * 65535.0);
+                var value = (ushort)Math.Round(yc * 65535.0);
                 if (value < previous[c]) value = previous[c];
                 previous[c] = value;
                 ramp[c * Size + i] = value;

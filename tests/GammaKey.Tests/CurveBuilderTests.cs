@@ -116,22 +116,50 @@ public class CurveBuilderTests
     }
 
     [Fact]
-    public void RedGainChangesOnlyTheRedChannel()
+    public void RedGainRaisesTheRedChannel()
     {
         var ramp = CurveBuilder.Build(ColorValues.Normal with { Red = 50 });
 
         Assert.True(ramp[128] > 128 * 257);
+    }
+
+    [Fact]
+    public void RedGainLeavesGreenUnchanged()
+    {
+        var ramp = CurveBuilder.Build(ColorValues.Normal with { Red = 50 });
+
         Assert.Equal((ushort)(128 * 257), ramp[256 + 128]);
+    }
+
+    [Fact]
+    public void RedGainLeavesBlueUnchanged()
+    {
+        var ramp = CurveBuilder.Build(ColorValues.Normal with { Red = 50 });
+
         Assert.Equal((ushort)(128 * 257), ramp[512 + 128]);
     }
 
     [Fact]
-    public void GreenGainChangesOnlyTheGreenChannel()
+    public void GreenGainLowersTheGreenChannel()
+    {
+        var ramp = CurveBuilder.Build(ColorValues.Normal with { Green = -50 });
+
+        Assert.True(ramp[256 + 128] < 128 * 257);
+    }
+
+    [Fact]
+    public void GreenGainLeavesRedUnchanged()
     {
         var ramp = CurveBuilder.Build(ColorValues.Normal with { Green = -50 });
 
         Assert.Equal((ushort)(128 * 257), ramp[128]);
-        Assert.True(ramp[256 + 128] < 128 * 257);
+    }
+
+    [Fact]
+    public void GreenGainLeavesBlueUnchanged()
+    {
+        var ramp = CurveBuilder.Build(ColorValues.Normal with { Green = -50 });
+
         Assert.Equal((ushort)(128 * 257), ramp[512 + 128]);
     }
 
@@ -139,6 +167,14 @@ public class CurveBuilderTests
     public void BlackFloorAtMaxLiftsBlackToHalfScale()
     {
         var ramp = CurveBuilder.Build(ColorValues.Normal with { BlackFloor = 100 });
+
+        Assert.Equal((ushort)32768, ramp[0]);
+    }
+
+    [Fact]
+    public void BlackFloorHoldsWhenBrightnessPushesBlackBelowZero()
+    {
+        var ramp = CurveBuilder.Build(ColorValues.Normal with { Brightness = -100, BlackFloor = 100 });
 
         Assert.Equal((ushort)32768, ramp[0]);
     }
