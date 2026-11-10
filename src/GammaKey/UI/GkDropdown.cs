@@ -13,7 +13,8 @@ public sealed class GkDropdown : ComboBox
         DropDownStyle = ComboBoxStyle.DropDownList;
         DrawMode = DrawMode.OwnerDrawFixed;
         FlatStyle = FlatStyle.Flat;
-        ItemHeight = Theme.ControlHeight - 6;
+        // The form's scale pass does not touch ItemHeight, so set it in device pixels here.
+        ItemHeight = Theme.Scale(Theme.ControlHeight - 6, DeviceDpi);
         BackColor = Theme.Surface;
         ForeColor = Theme.TextPrimary;
         Font = Theme.Label;

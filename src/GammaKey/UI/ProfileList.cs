@@ -9,7 +9,8 @@ public sealed class ProfileList : ListBox
     public ProfileList()
     {
         DrawMode = DrawMode.OwnerDrawFixed;
-        ItemHeight = RowHeight;
+        // The form's scale pass does not touch ItemHeight, so set it in device pixels here.
+        ItemHeight = Theme.Scale(RowHeight, DeviceDpi);
         BorderStyle = BorderStyle.None;
         IntegralHeight = false;
         BackColor = Theme.Panel;
