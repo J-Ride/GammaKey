@@ -89,7 +89,7 @@ public sealed class GkHotkeyBox : Control
             Color chipText = !Enabled ? Theme.TextDim : (_isRefused ? Theme.Warning : Theme.TextPrimary);
             foreach (var part in parts)
             {
-                x = DrawChip(g, part, x, Height, chipText, _isRefused ? Theme.Warning : Theme.LineStrong) + S(Theme.Space1);
+                x = DrawChip(g, part, x, Height, DeviceDpi, chipText, _isRefused ? Theme.Warning : Theme.LineStrong) + S(Theme.Space1);
             }
         }
 
@@ -100,11 +100,11 @@ public sealed class GkHotkeyBox : Control
 
     // A keycap: mono text in a box with a 2 px bottom edge, centred on a line of lineHeight device
     // pixels. Shared look with the profile list.
-    internal static int DrawChip(Graphics g, string text, int x, int lineHeight, Color textColor, Color border)
+    internal static int DrawChip(Graphics g, string text, int x, int lineHeight, float dpi, Color textColor, Color border)
     {
         var size = TextRenderer.MeasureText(g, text, Theme.MonoSmall, Size.Empty, TextFormatFlags.NoPadding);
-        int h = size.Height + Theme.Scale(6, g.DpiX);
-        int w = size.Width + Theme.Scale(12, g.DpiX);
+        int h = size.Height + Theme.Scale(6, dpi);
+        int w = size.Width + Theme.Scale(12, dpi);
         var chip = new Rectangle(x, (lineHeight - h) / 2 - 1, w, h);
         using (var b = new SolidBrush(Theme.Background)) Theme.FillRounded(g, b, chip, 3);
         using (var p = new Pen(border)) Theme.DrawRounded(g, p, chip, 3);

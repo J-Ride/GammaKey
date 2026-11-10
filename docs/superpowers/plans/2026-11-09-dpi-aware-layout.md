@@ -15,7 +15,7 @@
 - The pass does not scale `ComboBox.ItemHeight` or `ListBox.ItemHeight`.
 - A control added after `ResumeLayout(true)` is not scaled. Every control must exist before it.
 - At 96 dpi the factor is 1.0 and the pass changes nothing, so 100% layout is untouched.
-- `Control.DeviceDpi` on a brand-new control equals the primary monitor's DPI at process start. `Graphics.DpiX` inside `OnPaint` equals the window's DPI.
+- `Control.DeviceDpi` on a brand-new control equals the primary monitor's DPI at process start. `Graphics.DpiX` reports the system DPI, not the window's monitor, so static paint helpers take the caller's `DeviceDpi` as a parameter.
 
 ## Global Constraints
 
@@ -27,7 +27,7 @@
   - Format: `timeout 300 dotnet format --verify-no-changes -v q < /dev/null`
 - 0 warnings, 0 errors, all tests green at every commit. 84 tests pass at the start.
 - Only the files named in each task change. `Theme.Radius` corner radii stay unscaled on purpose (a 4 px corner reads fine at any DPI).
-- `Theme.Scale(int logical, float dpi)` is the only scaling helper. Controls pass `DeviceDpi`; static paint helpers that only have a `Graphics` pass `g.DpiX`.
+- `Theme.Scale(int logical, float dpi)` is the only scaling helper. Controls pass `DeviceDpi`; static paint helpers take the caller's `DeviceDpi` as a parameter.
 - Commit messages: descriptive subject and body. No attribution trailer of any kind. Write the message to a file and use `git commit -F <file>`. Stage by path.
 - Comments explain WHY only. No dead code. `using Color = System.Drawing.Color;` stays after the namespace line where it already exists (`GammaKey.Color` is a namespace).
 - Do not touch Jordan's uncommitted `docs/mockups/gammakey-ui-mockup-v2.html` or the untracked colour-balance spec.

@@ -61,7 +61,7 @@ public sealed class ProfileList : ListBox
         var state = g.Save();
         g.TranslateTransform(0, row.Top);
         foreach (var part in parts)
-            x = GkHotkeyBox.DrawChip(g, part, x, row.Height, selected ? Theme.Accent : Theme.TextMuted, selected ? Theme.AccentDim : Theme.Line) + S(Theme.Space1);
+            x = GkHotkeyBox.DrawChip(g, part, x, row.Height, DeviceDpi, selected ? Theme.Accent : Theme.TextMuted, selected ? Theme.AccentDim : Theme.Line) + S(Theme.Space1);
         g.Restore(state);
     }
 }

@@ -12,12 +12,12 @@ public static class GkIcons
 {
     public const int Size = 16;
 
-    public static void Draw(Graphics g, GkIcon icon, Rectangle bounds, Color color)
+    public static void Draw(Graphics g, GkIcon icon, Rectangle bounds, float dpi, Color color)
     {
         var old = g.SmoothingMode;
         g.SmoothingMode = SmoothingMode.AntiAlias;
-        // Paint-time DPI: the button bounds arrive scaled, the glyph must grow with them.
-        float k = g.DpiX / 96f;
+        // The caller passes its DeviceDpi, which follows the monitor; a GDI context reports the system DPI and would keep the start-up scale after a drag to another monitor.
+        float k = dpi / 96f;
         float size = Size * k;
         float x = bounds.Left + (bounds.Width - size) / 2f;
         float y = bounds.Top + (bounds.Height - size) / 2f;
