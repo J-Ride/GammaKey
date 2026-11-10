@@ -600,13 +600,20 @@ public sealed class MainForm : Form
     private void ExportProfiles()
     {
         ResolveUnsavedEdits();
-        using var dialog = new SaveFileDialog { Filter = ProfileFileFilter, FileName = "GammaKey-profiles.json", DefaultExt = "json" };
+        var scope = ExportChoiceDialog.Ask(this, hasSelection: _saved is not null);
+        if (scope is null) return;
+        bool single = scope == ExportScope.Selected && _saved is not null;
+        // The saved profile goes out, never the working copy; the guard above has settled it.
+        AppSettings payload = single ? ProfileExport.Single(_saved!) : _controller.Settings;
+        string fileName = single ? ProfileExport.SuggestedFileName(_saved!.Name) : "GammaKey-profiles.json";
+        using var dialog = new SaveFileDialog { Filter = ProfileFileFilter, FileName = fileName, DefaultExt = "json" };
         if (dialog.ShowDialog(this) != DialogResult.OK) return;
         try
         {
             // Same shape as profiles.json, so an export and a copied profiles.json both import.
-            File.WriteAllText(dialog.FileName, JsonSerializer.Serialize(_controller.Settings, ProfileStore.JsonOptions));
-            _status.Text = $"Exported {_controller.Settings.Profiles.Count} profiles.";
+            File.WriteAllText(dialog.FileName, JsonSerializer.Serialize(payload, ProfileStore.JsonOptions));
+            int count = payload.Profiles.Count;
+            _status.Text = count == 1 ? "Exported 1 profile." : $"Exported {count} profiles.";
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
