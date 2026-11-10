@@ -85,7 +85,9 @@ public sealed class TrayIcon : IDisposable
         startup.CheckedChanged += (_, _) => _controller.SetStartWithWindows(startup.Checked);
         _menu.Items.Add(startup);
         _menu.Items.Add(new ToolStripSeparator());
-        _menu.Items.Add("Quit", null, (_, _) => Application.Exit());
+        // Application.Exit closes the form with CloseReason.ApplicationExitCall, which skips
+        // OnFormClosing's guard, so the guard runs here first.
+        _menu.Items.Add("Quit", null, (_, _) => { _mainForm.ResolveUnsavedEdits(); Application.Exit(); });
     }
 
     public void Dispose()

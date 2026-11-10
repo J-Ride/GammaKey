@@ -120,6 +120,16 @@ public sealed class MainForm : Form
         Activate();
     }
 
+    // Runs before any action that leaves the current profile. Both answers finish the action:
+    // Save and Apply writes the edits first, Discard changes drops them. Hotkeys never call this.
+    public void ResolveUnsavedEdits()
+    {
+        if (!IsDirty || _editing is null) return;
+        var choice = UnsavedChangesDialog.Ask(Visible ? this : null, _editing.Name);
+        if (choice == UnsavedChoice.SaveAndApply) ApplyEdits();
+        else RevertEdits();
+    }
+
     protected override void OnDpiChanged(DpiChangedEventArgs e)
     {
         base.OnDpiChanged(e);
@@ -251,7 +261,9 @@ public sealed class MainForm : Form
         _hotkeyBox.ComboChanged += (_, _) => { if (_editing is not null && !_loading) { _editing.Hotkey = _hotkeyBox.Combo; _hotkeyBox.IsRefused = false; RefreshDirty(); } };
         // A new target previews the working copy there; it is saved and made active only by Apply.
         _targetBox.SelectedIndexChanged += (_, _) => { if (_editing is not null && !_loading) { _editing.Target = TargetFromCombo(); _status.Text = _controller.Preview(_editing.Values, _editing.Target).Note ?? ""; RefreshDirty(); } };
-        _profileList.SelectedIndexChanged += (_, _) => LoadSelectedProfile();
+        // The list has already moved, but _saved and _editing still point at the previous
+        // profile, so the dialog's choice lands on that one before the new row loads.
+        _profileList.SelectedIndexChanged += (_, _) => { if (_loading) return; ResolveUnsavedEdits(); LoadSelectedProfile(); };
 
         if (!_controller.Vibrance.IsAvailable)
         {
@@ -548,6 +560,7 @@ public sealed class MainForm : Form
 
     private void AddProfile()
     {
+        ResolveUnsavedEdits();
         var profile = new Profile();
         _controller.Settings.Profiles.Add(profile);
         SaveSettingsAndRegister();
@@ -556,6 +569,7 @@ public sealed class MainForm : Form
 
     private void DuplicateProfile()
     {
+        ResolveUnsavedEdits();
         if (_saved is null) return;
         var copy = _saved.Clone();
         copy.Name = _saved.Name + " copy";
@@ -566,6 +580,7 @@ public sealed class MainForm : Form
 
     private void DeleteProfile()
     {
+        ResolveUnsavedEdits();
         if (_saved is null) return;
         var index = _controller.Settings.Profiles.IndexOf(_saved);
         _controller.Settings.Profiles.Remove(_saved);
@@ -584,6 +599,7 @@ public sealed class MainForm : Form
 
     private void ExportProfiles()
     {
+        ResolveUnsavedEdits();
         using var dialog = new SaveFileDialog { Filter = ProfileFileFilter, FileName = "GammaKey-profiles.json", DefaultExt = "json" };
         if (dialog.ShowDialog(this) != DialogResult.OK) return;
         try
@@ -600,6 +616,7 @@ public sealed class MainForm : Form
 
     private void ImportProfiles()
     {
+        ResolveUnsavedEdits();
         using var dialog = new OpenFileDialog { Filter = ProfileFileFilter };
         if (dialog.ShowDialog(this) != DialogResult.OK) return;
 
@@ -636,6 +653,7 @@ public sealed class MainForm : Form
         // Closing the window hides to the tray; Quit in the tray menu ends the app.
         if (e.CloseReason == CloseReason.UserClosing)
         {
+            ResolveUnsavedEdits();
             e.Cancel = true;
             Hide();
         }
@@ -643,6 +661,7 @@ public sealed class MainForm : Form
 
     private void OpenSettings()
     {
+        ResolveUnsavedEdits();
         using var dialog = new SettingsForm(_controller);
         dialog.ShowDialog(this);
     }
