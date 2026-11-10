@@ -7,7 +7,7 @@ Made for Escape from Tarkov's dark corners, works anywhere on the desktop.
 
 ## Run it
 
-1. Download `GammaKey.exe` and put it in its own folder (it writes `profiles.json` beside itself).
+1. Download `GammaKey.exe` from the [latest release](https://github.com/J-Ride/GammaKey/releases/latest) and put it in its own folder (it writes `profiles.json` beside itself).
 2. Double-click it. Windows SmartScreen may warn because the exe is unsigned: click **More info**, then **Run anyway**.
 3. An icon appears by the clock. Left-click it to open the window.
 4. Pick a profile, drag the sliders until the screen looks right, click the **Hotkey** box and press your key combo, then **Save**.
