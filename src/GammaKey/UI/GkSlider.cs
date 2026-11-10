@@ -116,12 +116,12 @@ public sealed class GkSlider : Control
         // An origin at the minimum (Vibrance) has no useful label of its own, so the middle value stands in.
         int centreValue = Origin <= _minimum ? (_minimum + _maximum) / 2 : Math.Clamp(Origin, _minimum, _maximum);
         string centreText = formatter(centreValue);
-        int centreWidth = TextRenderer.MeasureText(g, centreText, Theme.MonoSmall, Size.Empty, TextFormatFlags.NoPadding).Width;
+        int centreWidth = TextRenderer.MeasureText(g, centreText, Theme.FontsFor(DeviceDpi).MonoSmall, Size.Empty, TextFormatFlags.NoPadding).Width;
         int centreX = CentreLabelX(_minimum, _maximum, Origin, track, Width);
         var centreRect = new Rectangle(centreX - centreWidth / 2, scaleRect.Top, centreWidth, scaleRect.Height);
-        TextRenderer.DrawText(g, formatter(_minimum), Theme.MonoSmall, scaleRect, scaleColor, TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
-        TextRenderer.DrawText(g, centreText, Theme.MonoSmall, centreRect, scaleColor, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
-        TextRenderer.DrawText(g, formatter(_maximum), Theme.MonoSmall, scaleRect, scaleColor, TextFormatFlags.Right | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
+        TextRenderer.DrawText(g, formatter(_minimum), Theme.FontsFor(DeviceDpi).MonoSmall, scaleRect, scaleColor, TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
+        TextRenderer.DrawText(g, centreText, Theme.FontsFor(DeviceDpi).MonoSmall, centreRect, scaleColor, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
+        TextRenderer.DrawText(g, formatter(_maximum), Theme.FontsFor(DeviceDpi).MonoSmall, scaleRect, scaleColor, TextFormatFlags.Right | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
     }
 
     protected override void OnMouseDown(MouseEventArgs e)

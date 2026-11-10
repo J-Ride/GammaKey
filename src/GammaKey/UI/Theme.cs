@@ -29,12 +29,50 @@ public static class Theme
     private static readonly string Sans = ResolveFamily("Segoe UI");
     private static readonly string MonoFamily = ResolveFamily("Consolas");
 
+    // Point fonts for stock controls; WinForms rescales a control's Font when its window changes DPI.
     public static readonly Font Title = new(Sans, 12f, FontStyle.Bold);
     public static readonly Font Label = new(Sans, 9.5f);
     public static readonly Font Eyebrow = new(Sans, 8f, FontStyle.Bold);
     public static readonly Font Mono = new(MonoFamily, 9.5f);
     public static readonly Font MonoSmall = new(MonoFamily, 7.5f);
     public static readonly Font Caption = new(Sans, 8.5f);
+
+    // TextRenderer turns a point font into pixels at the system DPI, not the window's, so a
+    // window on a monitor at another scale draws it the wrong size. Owner-drawn code takes the
+    // set for its DeviceDpi instead: pixel fonts are the same size on every monitor.
+    public sealed class FontSet
+    {
+        internal FontSet(float dpi)
+        {
+            Title = Px(Sans, 12f, dpi, FontStyle.Bold);
+            Label = Px(Sans, 9.5f, dpi);
+            Eyebrow = Px(Sans, 8f, dpi, FontStyle.Bold);
+            Mono = Px(MonoFamily, 9.5f, dpi);
+            MonoSmall = Px(MonoFamily, 7.5f, dpi);
+            Caption = Px(Sans, 8.5f, dpi);
+        }
+
+        public Font Title { get; }
+        public Font Label { get; }
+        public Font Eyebrow { get; }
+        public Font Mono { get; }
+        public Font MonoSmall { get; }
+        public Font Caption { get; }
+
+        private static Font Px(string family, float points, float dpi, FontStyle style = FontStyle.Regular) => new(family, points * dpi / 72f, style, GraphicsUnit.Pixel);
+    }
+
+    private static readonly Dictionary<int, FontSet> FontSets = new();
+
+    public static FontSet FontsFor(float dpi)
+    {
+        int key = (int)Math.Round(dpi);
+        lock (FontSets)
+        {
+            if (!FontSets.TryGetValue(key, out var set)) FontSets[key] = set = new FontSet(key);
+            return set;
+        }
+    }
 
     public const int Space1 = 4;
     public const int Space2 = 8;
@@ -70,24 +108,6 @@ public static class Theme
         foreach (Control child in root.Controls) ApplyRecursive(child);
     }
 
-    // An accent-filled text button, the text counterpart of GkIconButton.IsPrimary. Call after
-    // Apply(root), which paints every Button with the standard surface first. Disabled falls back
-    // to the standard look so a grey accent block never appears.
-    public static void StylePrimary(Button button)
-    {
-        void Paint()
-        {
-            bool on = button.Enabled;
-            button.BackColor = on ? Accent : Surface;
-            button.ForeColor = on ? Background : TextDim;
-            button.FlatAppearance.BorderColor = on ? Accent : Line;
-            button.FlatAppearance.MouseOverBackColor = on ? AccentDim : Raised;
-        }
-        button.FlatStyle = FlatStyle.Flat;
-        button.EnabledChanged += (_, _) => Paint();
-        Paint();
-    }
-
     // Only the few stock controls that remain are styled here; the Gk* controls paint themselves.
     private static void ApplyRecursive(Control control)
     {
@@ -97,14 +117,6 @@ public static class Theme
                 t.BackColor = Surface;
                 t.ForeColor = TextPrimary;
                 t.BorderStyle = BorderStyle.FixedSingle;
-                break;
-            case Button b:
-                b.FlatStyle = FlatStyle.Flat;
-                b.FlatAppearance.BorderColor = LineStrong;
-                b.FlatAppearance.MouseOverBackColor = Raised;
-                b.BackColor = Surface;
-                b.Height = ControlHeight;
-                b.Padding = Padding.Empty;
                 break;
             case System.Windows.Forms.Panel or FlowLayoutPanel or TableLayoutPanel:
                 if (control.BackColor == SystemColors.Control) control.BackColor = Background;

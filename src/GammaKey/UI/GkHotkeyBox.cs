@@ -82,7 +82,7 @@ public sealed class GkHotkeyBox : Control
         var parts = Format.HotkeyParts(_combo);
         if (parts.Length == 0)
         {
-            TextRenderer.DrawText(g, Focused ? "press a combination…" : "click, then press keys", Theme.Caption, new Rectangle(x, 0, Width - x, Height), Theme.TextDim, TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
+            TextRenderer.DrawText(g, Focused ? "press a combination…" : "click, then press keys", Theme.FontsFor(DeviceDpi).Caption, new Rectangle(x, 0, Width - x, Height), Theme.TextDim, TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
         }
         else
         {
@@ -95,23 +95,25 @@ public sealed class GkHotkeyBox : Control
 
         string hint = Focused ? "Esc to cancel · Backspace clears" : (_isRefused ? "in use by another app" : "");
         if (hint.Length > 0)
-            TextRenderer.DrawText(g, hint, Theme.Caption, new Rectangle(0, 0, Width - S(Theme.Space2), Height), _isRefused && !Focused ? Theme.Warning : Theme.TextDim, TextFormatFlags.Right | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
+            TextRenderer.DrawText(g, hint, Theme.FontsFor(DeviceDpi).Caption, new Rectangle(0, 0, Width - S(Theme.Space2), Height), _isRefused && !Focused ? Theme.Warning : Theme.TextDim, TextFormatFlags.Right | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
     }
 
     // A keycap: mono text in a box with a 2 px bottom edge, centred on a line that starts at y and
     // is lineHeight device pixels tall. Shared look with the profile list. The caller passes y
     // instead of translating the Graphics because TextRenderer draws with GDI and ignores GDI+
     // transforms, so a translated chip would keep its box but lose its text to row 0.
+    internal static int ChipHeightFor(float dpi) => Theme.FontsFor(dpi).MonoSmall.Height + Theme.Scale(6, dpi);
+
     internal static int DrawChip(Graphics g, string text, int x, int y, int lineHeight, float dpi, Color textColor, Color border)
     {
-        var size = TextRenderer.MeasureText(g, text, Theme.MonoSmall, Size.Empty, TextFormatFlags.NoPadding);
-        int h = size.Height + Theme.Scale(6, dpi);
+        var size = TextRenderer.MeasureText(g, text, Theme.FontsFor(dpi).MonoSmall, Size.Empty, TextFormatFlags.NoPadding);
+        int h = ChipHeightFor(dpi);
         int w = size.Width + Theme.Scale(12, dpi);
         var chip = new Rectangle(x, y + (lineHeight - h) / 2 - 1, w, h);
         using (var b = new SolidBrush(Theme.Background)) Theme.FillRounded(g, b, chip, 3);
         using (var p = new Pen(border)) Theme.DrawRounded(g, p, chip, 3);
         using (var bottom = new Pen(border, 2f)) g.DrawLine(bottom, chip.Left + 3, chip.Bottom, chip.Right - 3, chip.Bottom);
-        TextRenderer.DrawText(g, text, Theme.MonoSmall, chip, textColor, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
+        TextRenderer.DrawText(g, text, Theme.FontsFor(dpi).MonoSmall, chip, textColor, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
         return chip.Right;
     }
 }

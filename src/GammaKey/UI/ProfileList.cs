@@ -16,11 +16,8 @@ public sealed class ProfileList : ListBox
         Margin = Padding.Empty;
     }
 
-    // Two text lines plus a Space2 band above and below, so the summary never clips at any scale.
-    public static int RowHeightFor(float dpi) => NameLineHeight(dpi) + SummaryLineHeight(dpi) + 2 * Theme.Scale(Theme.Space2, dpi);
-
-    private static int NameLineHeight(float dpi) => (int)Math.Ceiling(Theme.Label.GetHeight(dpi));
-    private static int SummaryLineHeight(float dpi) => (int)Math.Ceiling(Theme.Caption.GetHeight(dpi));
+    // One line, the taller of the name and a hotkey chip, plus a Space2 band above and below.
+    public static int RowHeightFor(float dpi) => Math.Max(Theme.FontsFor(dpi).Label.Height, GkHotkeyBox.ChipHeightFor(dpi)) + 2 * Theme.Scale(Theme.Space2, dpi);
 
     protected override void OnDpiChangedAfterParent(EventArgs e)
     {
@@ -56,19 +53,14 @@ public sealed class ProfileList : ListBox
             g.FillRectangle(bar, row.Left, row.Top + 3, 2, row.Height - 6);
         }
 
+        var fonts = Theme.FontsFor(DeviceDpi);
         var parts = GammaKey.UI.Format.HotkeyParts(profile.Hotkey);
         int chipsWidth = 0;
-        foreach (var part in parts) chipsWidth += TextRenderer.MeasureText(g, part, Theme.MonoSmall, Size.Empty, TextFormatFlags.NoPadding).Width + S(12) + S(Theme.Space1);
+        foreach (var part in parts) chipsWidth += TextRenderer.MeasureText(g, part, fonts.MonoSmall, Size.Empty, TextFormatFlags.NoPadding).Width + S(12) + S(Theme.Space1);
         int textRight = row.Right - S(Theme.Space2) - chipsWidth;
 
-        // Both lines are centred as a block inside the row so the Space2 bands stay equal.
-        int nameHeight = NameLineHeight(DeviceDpi);
-        int summaryHeight = SummaryLineHeight(DeviceDpi);
-        int textTop = row.Top + (row.Height - nameHeight - summaryHeight) / 2;
-        var nameRect = new Rectangle(row.Left + S(Theme.Space3), textTop, textRight - row.Left - S(Theme.Space3), nameHeight);
-        TextRenderer.DrawText(g, profile.Name, Theme.Label, nameRect, Theme.TextPrimary, TextFormatFlags.Left | TextFormatFlags.NoPadding | TextFormatFlags.EndEllipsis);
-        var subRect = new Rectangle(nameRect.Left, nameRect.Bottom, nameRect.Width, summaryHeight);
-        TextRenderer.DrawText(g, GammaKey.UI.Format.ProfileSummary(profile), Theme.Caption, subRect, Theme.TextDim, TextFormatFlags.Left | TextFormatFlags.NoPadding | TextFormatFlags.EndEllipsis);
+        var nameRect = new Rectangle(row.Left + S(Theme.Space3), row.Top, textRight - row.Left - S(Theme.Space3), row.Height);
+        TextRenderer.DrawText(g, profile.Name, fonts.Label, nameRect, Theme.TextPrimary, TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding | TextFormatFlags.EndEllipsis);
 
         // Chips centre on the row; DrawChip centres on the line it is given.
         int x = textRight;

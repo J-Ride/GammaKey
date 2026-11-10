@@ -1,4 +1,3 @@
-using GammaKey.Models;
 using GammaKey.UI;
 using Xunit;
 
@@ -34,19 +33,5 @@ public class FormatTests
     public void HotkeyPartsOfEmptyIsEmpty()
     {
         Assert.Empty(Format.HotkeyParts(""));
-    }
-
-    [Fact]
-    public void ProfileSummaryListsOnlyChangedValues()
-    {
-        var p = new Profile { Gamma = 1.55, Shadows = 36 };
-
-        Assert.Equal("gamma 1.55 · shadows +36", Format.ProfileSummary(p));
-    }
-
-    [Fact]
-    public void ProfileSummaryOfNormalIsNeutral()
-    {
-        Assert.Equal("neutral curve", Format.ProfileSummary(new Profile()));
     }
 }

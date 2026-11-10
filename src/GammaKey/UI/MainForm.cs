@@ -49,8 +49,8 @@ public sealed class MainForm : Form
     // previews touch _editing only, so Revert is a fresh copy and nothing is written until Apply.
     private Profile? _saved;
     private Profile? _editing;
-    private readonly Button _applyButton = new() { Text = "Apply", AutoSize = true, MinimumSize = new Size(72, Theme.ControlHeight), Margin = Padding.Empty, Enabled = false };
-    private readonly Button _revertButton = new() { Text = "Revert", AutoSize = true, MinimumSize = new Size(72, Theme.ControlHeight), Margin = new Padding(0, 0, Theme.Space2, 0), Enabled = false };
+    private readonly GkButton _applyButton = new("Apply") { IsPrimary = true, Margin = Padding.Empty, Enabled = false };
+    private readonly GkButton _revertButton = new("Revert") { Margin = new Padding(0, 0, Theme.Space2, 0), Enabled = false };
     private string? _activeProfileId;
     private bool _loading;
 
@@ -92,7 +92,6 @@ public sealed class MainForm : Form
 
         BuildLayout();
         Theme.Apply(this);
-        Theme.StylePrimary(_applyButton);
         // Every control now exists; a control added after this line would not be scaled.
         ResumeLayout(true);
         // Set after the scale pass, in device pixels, so the pass can neither skip nor double it.
@@ -138,36 +137,29 @@ public sealed class MainForm : Form
 
     private void BuildLayout()
     {
-        var root = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 3, Margin = Padding.Empty, BackColor = Theme.Background };
-        root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 28));
-        Controls.Add(root);
+        // The frame is docked panels, not a TableLayoutPanel: a table never shrinks a column
+        // below its children's preferred width, and the editor's preferred width follows the
+        // groups, which follow the editor, so the window could grow but never shrink back.
+        // Docking order: the Fill control is added first so Top and Bottom are laid out first.
+        var body = new System.Windows.Forms.Panel { Dock = DockStyle.Fill, Margin = Padding.Empty, BackColor = Theme.Background };
+        Controls.Add(body);
 
         // Status strip
         var strip = new FlowLayoutPanel { Dock = DockStyle.Top, AutoSize = true, BackColor = Theme.Panel, Padding = new Padding(Theme.Space4, Theme.Space2, Theme.Space4, Theme.Space2), Margin = Padding.Empty };
         strip.Paint += (_, e) => { using var p = new Pen(Theme.Line); e.Graphics.DrawLine(p, 0, strip.Height - 1, strip.Width, strip.Height - 1); };
         strip.Controls.AddRange(new Control[] { _monitorChip, _modeChip, _hdrChip, _hotkeysChip });
-        root.Controls.Add(strip, 0, 0);
+        Controls.Add(strip);
 
         // Body: rail + editor
-        var body = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, Margin = Padding.Empty, BackColor = Theme.Background };
-        body.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 272));
-        body.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        root.Controls.Add(body, 0, 1);
-
-        var rail = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 3, Margin = Padding.Empty, BackColor = Theme.Panel };
+        var rail = new System.Windows.Forms.Panel { Dock = DockStyle.Left, Width = 272, Margin = Padding.Empty, BackColor = Theme.Panel };
         rail.Paint += (_, e) => { using var p = new Pen(Theme.Line); e.Graphics.DrawLine(p, rail.Width - 1, 0, rail.Width - 1, rail.Height); };
-        rail.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        rail.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        rail.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         var railHead = new TableLayoutPanel { ColumnCount = 2, AutoSize = true, Dock = DockStyle.Top, BackColor = Theme.Panel, Padding = new Padding(Theme.Space4, Theme.Space3, Theme.Space4, Theme.Space1), Margin = Padding.Empty };
         railHead.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         railHead.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         railHead.Controls.Add(new Label { Text = "PROFILES", Font = Theme.Eyebrow, ForeColor = Theme.TextMuted, AutoSize = true, Margin = Padding.Empty }, 0, 0);
         railHead.Controls.Add(_profileCount, 1, 0);
-        rail.Controls.Add(railHead, 0, 0);
-        rail.Controls.Add(_profileList, 0, 1);
+        rail.Controls.Add(_profileList);
+        rail.Controls.Add(railHead);
 
         var railActions = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, WrapContents = false, AutoSize = true, Dock = DockStyle.Bottom, BackColor = Theme.Panel, Padding = new Padding(Theme.Space3, Theme.Space2, Theme.Space3, Theme.Space3), Margin = Padding.Empty };
         railActions.Paint += (_, e) => { using var p = new Pen(Theme.Line); e.Graphics.DrawLine(p, 0, 0, railActions.Width, 0); };
@@ -183,11 +175,12 @@ public sealed class MainForm : Form
         var restore = WideButton("Restore monitor", (_, _) => _controller.Reset());
         restore.Margin = new Padding(0, Theme.Space2, 0, 0);
         railActions.Controls.Add(restore);
-        rail.Controls.Add(railActions, 0, 2);
-        body.Controls.Add(rail, 0, 0);
+        rail.Controls.Add(railActions);
 
         // Editor
         var editor = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown, WrapContents = false, AutoScroll = true, Padding = new Padding(Theme.Space4, Theme.Space3, Theme.Space4, Theme.Space4), BackColor = Theme.Background };
+        body.Controls.Add(editor);
+        body.Controls.Add(rail);
         var head = new FlowLayoutPanel { AutoSize = true, Margin = new Padding(0, 0, 0, Theme.Space2), BackColor = Theme.Background };
         head.Controls.Add(_heading);
         head.Controls.Add(_activeTag);
@@ -205,8 +198,9 @@ public sealed class MainForm : Form
         two.Controls.Add(targetRow, 1, 0);
         profileGroup.Content.Controls.Add(two);
         // Right aligned: RightToLeft flow puts the first control at the right edge, so Apply
-        // sits at the far right with Revert to its left. GkGroup widens the row to the group.
-        var editActions = new FlowLayoutPanel { FlowDirection = FlowDirection.RightToLeft, AutoSize = false, Height = Theme.ControlHeight + 4, Margin = new Padding(0, Theme.Space1, 0, 0), BackColor = Theme.Panel };
+        // sits at the far right with Revert to its left. GkGroup widens the row to the group;
+        // the Space3 right margin lines Apply up with the inputs above, which end Space3 early.
+        var editActions = new FlowLayoutPanel { FlowDirection = FlowDirection.RightToLeft, AutoSize = false, Height = Theme.ControlHeight + 4, Margin = new Padding(0, Theme.Space1, Theme.Space3, 0), BackColor = Theme.Panel };
         editActions.Controls.Add(_applyButton);
         editActions.Controls.Add(_revertButton);
         _applyButton.Click += (_, _) => ApplyEdits();
@@ -236,7 +230,6 @@ public sealed class MainForm : Form
         editor.Controls.Add(colorGroup);
 
         editor.Controls.Add(_status);
-        body.Controls.Add(editor, 1, 0);
 
         // Groups stretch to the editor width; FlowLayoutPanel does not do that itself.
         editor.Layout += (_, _) =>
@@ -246,7 +239,7 @@ public sealed class MainForm : Form
         };
 
         // Status bar
-        var bar = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 3, BackColor = Theme.Panel, Padding = new Padding(Theme.Space3, 0, Theme.Space3, 0), Margin = Padding.Empty };
+        var bar = new TableLayoutPanel { Dock = DockStyle.Bottom, Height = 28, ColumnCount = 3, BackColor = Theme.Panel, Padding = new Padding(Theme.Space3, 0, Theme.Space3, 0), Margin = Padding.Empty };
         bar.Paint += (_, e) => { using var p = new Pen(Theme.Line); e.Graphics.DrawLine(p, 0, 0, bar.Width, 0); };
         bar.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         bar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
@@ -255,7 +248,7 @@ public sealed class MainForm : Form
         bar.Controls.Add(_appliedLine, 0, 0);
         bar.Controls.Add(_hookLine, 1, 0);
         bar.Controls.Add(_savedLine, 2, 0);
-        root.Controls.Add(bar, 0, 2);
+        Controls.Add(bar);
 
         _nameBox.TextChanged += (_, _) => { if (_editing is not null && !_loading) { _editing.Name = _nameBox.Text; RefreshDirty(); } };
         _hotkeyBox.ComboChanged += (_, _) => { if (_editing is not null && !_loading) { _editing.Hotkey = _hotkeyBox.Combo; _hotkeyBox.IsRefused = false; RefreshDirty(); } };
@@ -280,9 +273,9 @@ public sealed class MainForm : Form
         return b;
     }
 
-    private static Button WideButton(string text, EventHandler onClick)
+    private static GkButton WideButton(string text, EventHandler onClick)
     {
-        var b = new Button { Text = text, Width = 272 - 2 * Theme.Space3 - 1, Height = Theme.ControlHeight, Margin = Padding.Empty, Font = Theme.Label };
+        var b = new GkButton(text) { AutoWidth = false, Width = 272 - 2 * Theme.Space3 - 1, Margin = Padding.Empty };
         b.Click += onClick;
         return b;
     }

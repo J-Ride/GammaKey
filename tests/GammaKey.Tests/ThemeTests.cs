@@ -34,6 +34,24 @@ public class ThemeTests
     }
 
     [Fact]
+    public void FontsForGivesPixelFontsSoTextIsTheSameSizeOnEveryMonitor()
+    {
+        Assert.Equal(System.Drawing.GraphicsUnit.Pixel, Theme.FontsFor(96f).Label.Unit);
+    }
+
+    [Fact]
+    public void FontsForScalesTheFontWithDpi()
+    {
+        Assert.Equal(Theme.FontsFor(96f).Label.Size * 1.5f, Theme.FontsFor(144f).Label.Size, 2);
+    }
+
+    [Fact]
+    public void FontsForReusesOneSetPerDpi()
+    {
+        Assert.Same(Theme.FontsFor(120f), Theme.FontsFor(120f));
+    }
+
+    [Fact]
     public void ScaleRoundsHalvesAwayFromZero()
     {
         // 7 * 1.5 = 10.5; banker's rounding would give 10 and shave a pixel off every odd size.
