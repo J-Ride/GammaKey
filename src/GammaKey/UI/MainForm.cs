@@ -37,6 +37,11 @@ public sealed class MainForm : Form
     private readonly GkSlider _shadows = new() { Minimum = -100, Maximum = 100, Origin = 0 };
     private readonly GkSlider _highlights = new() { Minimum = -100, Maximum = 100, Origin = 0 };
     private readonly GkSlider _vibrance = new() { Minimum = 50, Maximum = 100, Origin = 50, ScaleFormatter = v => v.ToString() };
+    private readonly GkSlider _temperature = new() { Minimum = -100, Maximum = 100, Origin = 0 };
+    private readonly GkSlider _red = new() { Minimum = -100, Maximum = 100, Origin = 0 };
+    private readonly GkSlider _green = new() { Minimum = -100, Maximum = 100, Origin = 0 };
+    private readonly GkSlider _blue = new() { Minimum = -100, Maximum = 100, Origin = 0 };
+    private readonly GkSlider _blackFloor = new() { Minimum = 0, Maximum = 100, Origin = 0, ScaleFormatter = v => v.ToString() };
     private readonly Dictionary<GkSlider, GkNumber> _numbers = new();
     private readonly List<GkIconButton> _profileButtons = new();
 
@@ -184,6 +189,14 @@ public sealed class MainForm : Form
         curveGroup.Content.Controls.Add(Slider("Shadows", _shadows));
         curveGroup.Content.Controls.Add(Slider("Highlights", _highlights));
         editor.Controls.Add(curveGroup);
+
+        var balanceGroup = new GkGroup("Balance", "GDI gamma ramp");
+        balanceGroup.Content.Controls.Add(Slider("Warm/cool", _temperature));
+        balanceGroup.Content.Controls.Add(Slider("Red", _red));
+        balanceGroup.Content.Controls.Add(Slider("Green", _green));
+        balanceGroup.Content.Controls.Add(Slider("Blue", _blue));
+        balanceGroup.Content.Controls.Add(Slider("Black floor", _blackFloor));
+        editor.Controls.Add(balanceGroup);
 
         var colorGroup = new GkGroup("Color", "NVIDIA only");
         colorGroup.Content.Controls.Add(Slider("Vibrance", _vibrance));
@@ -419,6 +432,11 @@ public sealed class MainForm : Form
         _shadows.Value = v.Shadows;
         _highlights.Value = v.Highlights;
         _vibrance.Value = Math.Clamp(v.Vibrance, 50, 100);
+        _temperature.Value = v.Temperature;
+        _red.Value = v.Red;
+        _green.Value = v.Green;
+        _blue.Value = v.Blue;
+        _blackFloor.Value = v.BlackFloor;
         foreach (var (bar, number) in _numbers)
             number.Value = ReferenceEquals(bar, _gamma) ? bar.Value / 100m : bar.Value;
         _loading = false;
@@ -429,7 +447,14 @@ public sealed class MainForm : Form
         _status.Text = result.Note ?? "";
     }
 
-    private ColorValues CurrentValues() => new(_gamma.Value / 100.0, _brightness.Value, _contrast.Value, _shadows.Value, _highlights.Value, _vibrance.Value);
+    private ColorValues CurrentValues() => new(_gamma.Value / 100.0, _brightness.Value, _contrast.Value, _shadows.Value, _highlights.Value, _vibrance.Value)
+    {
+        Temperature = _temperature.Value,
+        Red = _red.Value,
+        Green = _green.Value,
+        Blue = _blue.Value,
+        BlackFloor = _blackFloor.Value,
+    };
 
     private void PushValuesToProfileAndPreview()
     {

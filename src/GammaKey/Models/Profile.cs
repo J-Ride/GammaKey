@@ -14,11 +14,23 @@ public sealed class Profile
     public int Shadows { get; set; }
     public int Highlights { get; set; }
     public int Vibrance { get; set; } = ColorValues.VibranceMin;
+    public int Temperature { get; set; }
+    public int Red { get; set; }
+    public int Green { get; set; }
+    public int Blue { get; set; }
+    public int BlackFloor { get; set; }
 
     [JsonIgnore]
     public ColorValues Values
     {
-        get => new(Gamma, Brightness, Contrast, Shadows, Highlights, Vibrance);
+        get => new(Gamma, Brightness, Contrast, Shadows, Highlights, Vibrance)
+        {
+            Temperature = Temperature,
+            Red = Red,
+            Green = Green,
+            Blue = Blue,
+            BlackFloor = BlackFloor,
+        };
         set
         {
             Gamma = value.Gamma;
@@ -27,6 +39,11 @@ public sealed class Profile
             Shadows = value.Shadows;
             Highlights = value.Highlights;
             Vibrance = value.Vibrance;
+            Temperature = value.Temperature;
+            Red = value.Red;
+            Green = value.Green;
+            Blue = value.Blue;
+            BlackFloor = value.BlackFloor;
         }
     }
 

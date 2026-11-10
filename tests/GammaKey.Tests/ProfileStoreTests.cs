@@ -206,4 +206,46 @@ public class ProfileStoreTests : IDisposable
         Assert.Equal("", p.Hotkey);
         Assert.False(string.IsNullOrEmpty(p.Id));
     }
+
+    [Fact]
+    public void MissingBalanceFieldsLoadAsNormal()
+    {
+        var path = PathFor("profiles.json");
+        File.WriteAllText(path, """
+            { "version": 1, "profiles": [ { "name": "Old", "gamma": 1.2, "brightness": 5, "contrast": 0, "shadows": 0, "highlights": 0, "vibrance": 50 } ] }
+            """);
+        var store = new ProfileStore(path);
+
+        var p = Assert.Single(store.Load().Profiles);
+
+        Assert.Equal(new ColorValues(1.2, 5, 0, 0, 0, 50), p.Values);
+    }
+
+    [Fact]
+    public void OutOfRangeBalanceFieldsAreClampedOnLoad()
+    {
+        var path = PathFor("profiles.json");
+        File.WriteAllText(path, """
+            { "version": 1, "profiles": [ { "name": "Wild", "temperature": 500, "red": -500, "green": 500, "blue": -500, "blackFloor": 500 } ] }
+            """);
+        var store = new ProfileStore(path);
+
+        var p = Assert.Single(store.Load().Profiles);
+
+        Assert.Equal(ColorValues.Normal with { Temperature = 100, Red = -100, Green = 100, Blue = -100, BlackFloor = 100 }, p.Values);
+    }
+
+    [Fact]
+    public void BalanceFieldsRoundTripThroughSave()
+    {
+        var path = PathFor("profiles.json");
+        var store = new ProfileStore(path);
+        var settings = ProfileStore.Defaults();
+        settings.Profiles[0].Values = ColorValues.Normal with { Temperature = 30, Red = -10, Green = 5, Blue = 20, BlackFloor = 40 };
+        store.Save(settings);
+
+        var p = store.Load().Profiles[0];
+
+        Assert.Equal(ColorValues.Normal with { Temperature = 30, Red = -10, Green = 5, Blue = 20, BlackFloor = 40 }, p.Values);
+    }
 }

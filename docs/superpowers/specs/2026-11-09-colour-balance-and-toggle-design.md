@@ -59,11 +59,13 @@ gainB = 1 + 0.3 * (Blue/100  - Temperature/100)
 floor = BlackFloor/100 * 0.5
 
 for each channel c:
-  yc = y * gain_c
+  yc = clamp(y * gain_c, 0, 1)
   yc = floor + yc * (1 - floor)
-  clamp yc to 0..1, scale to 0..65535
+  scale to 0..65535
   non-decreasing: value_c = max(value_c, previous_c)
 ```
+
+The clamp runs before the floor so a negative base curve (brightness or contrast at the low end) cannot pull the output under the floor.
 
 The combined gain is clamped to the range 0.4 to 1.6 before use, so Red at +100 with
 Temperature at +100 does not exceed the limit. `previous` becomes one running value per channel.
