@@ -12,6 +12,7 @@ public sealed class ExportChoiceDialog : Form
         // an empty form. Suspend first so the pass runs once, over the whole tree, at ResumeLayout.
         SuspendLayout();
         Text = "Export";
+        KeyPreview = true;
         WindowChrome.Apply(this);
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
@@ -43,6 +44,17 @@ public sealed class ExportChoiceDialog : Form
         ResumeLayout(true);
         // The height follows the content so the buttons stay reachable at any DPI scale.
         ClientSize = new Size(ClientSize.Width, buttons.Bottom + stack.Padding.Bottom);
+    }
+
+    protected override void OnKeyDown(KeyEventArgs e)
+    {
+        if (e.KeyCode == Keys.Escape)
+        {
+            DialogResult = DialogResult.Cancel;
+            e.Handled = true;
+            return;
+        }
+        base.OnKeyDown(e);
     }
 
     // Null when the user pressed Escape or the close box: nothing is exported.

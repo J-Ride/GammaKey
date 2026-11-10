@@ -125,7 +125,7 @@ public sealed class MainForm : Form
     public void ResolveUnsavedEdits()
     {
         if (!IsDirty || _editing is null) return;
-        var choice = UnsavedChangesDialog.Ask(Visible ? this : null, _editing.Name);
+        var choice = UnsavedChangesDialog.Ask(Visible && WindowState != FormWindowState.Minimized ? this : null, _editing.Name);
         if (choice == UnsavedChoice.SaveAndApply) ApplyEdits();
         else RevertEdits();
     }
@@ -263,7 +263,7 @@ public sealed class MainForm : Form
         _targetBox.SelectedIndexChanged += (_, _) => { if (_editing is not null && !_loading) { _editing.Target = TargetFromCombo(); _status.Text = _controller.Preview(_editing.Values, _editing.Target).Note ?? ""; RefreshDirty(); } };
         // The list has already moved, but _saved and _editing still point at the previous
         // profile, so the dialog's choice lands on that one before the new row loads.
-        _profileList.SelectedIndexChanged += (_, _) => { if (_loading) return; ResolveUnsavedEdits(); LoadSelectedProfile(); };
+        _profileList.SelectedIndexChanged += (_, _) => { if (_loading) return; _status.Text = ""; ResolveUnsavedEdits(); LoadSelectedProfile(); };
 
         if (!_controller.Vibrance.IsAvailable)
         {
@@ -454,7 +454,8 @@ public sealed class MainForm : Form
         if (!apply) return;
         // Clicking a profile is the same as pressing its hotkey: the screen changes at once.
         var result = _controller.ApplyProfile(_saved);
-        _status.Text = result.Note ?? "";
+        // Append: on the list path the guard's Save and Apply may have left a refused-hotkey warning.
+        if (result.Note is not null) _status.Text = string.Join(" ", new[] { _status.Text, result.Note }.Where(s => s.Length > 0));
     }
 
     // Pushes the working copy into every editor control without firing their change handlers.
@@ -504,10 +505,24 @@ public sealed class MainForm : Form
     private void ApplyEdits()
     {
         if (_saved is null || _editing is null) return;
-        _saved.CopyContentFrom(_editing);
-        SaveSettingsAndRegister(_hotkeyBox);
-        var result = _controller.ApplyProfile(_saved);
-        if (result.Note is not null) _status.Text = string.Join(" ", new[] { _status.Text, result.Note }.Where(s => s.Length > 0));
+        // Only a changed hotkey earns the no-modifier warning; a slider tweak must not repeat it.
+        bool hotkeyChanged = _saved.Hotkey != _editing.Hotkey;
+        var before = _saved.CopyForEditing();
+        try
+        {
+            _saved.CopyContentFrom(_editing);
+            SaveSettingsAndRegister(_hotkeyBox, warnNoModifier: hotkeyChanged);
+            var result = _controller.ApplyProfile(_saved);
+            if (result.Note is not null) _status.Text = string.Join(" ", new[] { _status.Text, result.Note }.Where(s => s.Length > 0));
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            // The save failed after the edits reached _saved: restore it so the editor stays dirty,
+            // and re-register because hotkeys were armed from the edited profile before the save.
+            _saved.CopyContentFrom(before);
+            _controller.RegisterHotkeys();
+            _status.Text = "Could not save profiles.json. Your edits are still in the editor.";
+        }
         RefreshDirty();
     }
 
@@ -540,7 +555,7 @@ public sealed class MainForm : Form
         RefreshDirty();
     }
 
-    private void SaveSettingsAndRegister(GkHotkeyBox? changedBox = null)
+    private void SaveSettingsAndRegister(GkHotkeyBox? changedBox = null, bool warnNoModifier = true)
     {
         // Register before Save so the armed-hotkeys chip refreshed by SettingsChanged is current.
         var failed = _controller.RegisterHotkeys();
@@ -553,7 +568,7 @@ public sealed class MainForm : Form
             // the no-modifier warning depend only on the edited profile.
             bool isRefused = _editing is not null && failed.Contains(_editing.Name);
             changedBox.IsRefused = isRefused;
-            if (!isRefused && changedBox.Combo.Length > 0 && !HotkeyCombo.HasModifier(changedBox.Combo) && !_controller.Settings.HotkeyPassthrough) messages.Add(HotkeyCombo.NoModifierWarning);
+            if (warnNoModifier && !isRefused && changedBox.Combo.Length > 0 && !HotkeyCombo.HasModifier(changedBox.Combo) && !_controller.Settings.HotkeyPassthrough) messages.Add(HotkeyCombo.NoModifierWarning);
         }
         _status.Text = string.Join(" ", messages);
     }
