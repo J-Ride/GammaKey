@@ -42,7 +42,7 @@ public sealed class GkNumber : Control
 
     public void Step(int direction) => Value = _value + direction * Increment;
 
-    private Rectangle SpinRect => new(Width - SpinWidth - 1, 1, SpinWidth, Height - 2);
+    private Rectangle SpinRect => new(Width - Theme.Scale(SpinWidth, DeviceDpi) - 1, 1, Theme.Scale(SpinWidth, DeviceDpi), Height - 2);
 
     protected override void OnPaint(PaintEventArgs e)
     {
@@ -63,13 +63,14 @@ public sealed class GkNumber : Control
             g.FillRectangle(hover, _hoverSpin > 0 ? upRect : downRect);
         }
         Color arrow = Enabled ? Theme.Accent : Theme.TextDim;
-        using (var pen = new Pen(arrow, 1.5f))
+        float k = DeviceDpi / 96f;
+        using (var pen = new Pen(arrow, 1.5f * k))
         {
             float cx = spin.Left + spin.Width / 2f;
             float uy = upRect.Top + upRect.Height / 2f;
-            g.DrawLines(pen, new[] { new PointF(cx - 3, uy + 1.5f), new PointF(cx, uy - 1.5f), new PointF(cx + 3, uy + 1.5f) });
+            g.DrawLines(pen, new[] { new PointF(cx - 3 * k, uy + 1.5f * k), new PointF(cx, uy - 1.5f * k), new PointF(cx + 3 * k, uy + 1.5f * k) });
             float dy = downRect.Top + downRect.Height / 2f;
-            g.DrawLines(pen, new[] { new PointF(cx - 3, dy - 1.5f), new PointF(cx, dy + 1.5f), new PointF(cx + 3, dy - 1.5f) });
+            g.DrawLines(pen, new[] { new PointF(cx - 3 * k, dy - 1.5f * k), new PointF(cx, dy + 1.5f * k), new PointF(cx + 3 * k, dy - 1.5f * k) });
         }
 
         var textRect = new Rectangle(0, 0, spin.Left, Height);

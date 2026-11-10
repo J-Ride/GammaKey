@@ -16,11 +16,14 @@ public static class GkIcons
     {
         var old = g.SmoothingMode;
         g.SmoothingMode = SmoothingMode.AntiAlias;
-        float x = bounds.Left + (bounds.Width - Size) / 2f;
-        float y = bounds.Top + (bounds.Height - Size) / 2f;
-        using var pen = new Pen(color, 2f) { StartCap = LineCap.Round, EndCap = LineCap.Round, LineJoin = LineJoin.Round };
-        // Glyphs are authored on a 24-unit grid like the SVGs; scale to 16.
-        float s = Size / 24f;
+        // Paint-time DPI: the button bounds arrive scaled, the glyph must grow with them.
+        float k = g.DpiX / 96f;
+        float size = Size * k;
+        float x = bounds.Left + (bounds.Width - size) / 2f;
+        float y = bounds.Top + (bounds.Height - size) / 2f;
+        using var pen = new Pen(color, 2f * k) { StartCap = LineCap.Round, EndCap = LineCap.Round, LineJoin = LineJoin.Round };
+        // Glyphs are authored on a 24-unit grid like the SVGs; scale to the device size.
+        float s = size / 24f;
         PointF P(float gx, float gy) => new(x + gx * s, y + gy * s);
 
         switch (icon)
