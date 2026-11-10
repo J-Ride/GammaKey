@@ -55,4 +55,31 @@ public sealed class Profile
         Target = new MonitorTarget { Mode = Target.Mode, MonitorName = Target.MonitorName },
         Values = Values,
     };
+
+    // The editor works on a copy so Revert is a reload. Unlike Clone, the copy keeps the Id (the
+    // active tag and the list row match on it) and the Hotkey (an edit must not clear it).
+    public Profile CopyForEditing() => new()
+    {
+        Id = Id,
+        Name = Name,
+        Hotkey = Hotkey,
+        Target = new MonitorTarget { Mode = Target.Mode, MonitorName = Target.MonitorName },
+        Values = Values,
+    };
+
+    public void CopyContentFrom(Profile source)
+    {
+        Name = source.Name;
+        Hotkey = source.Hotkey;
+        Target = new MonitorTarget { Mode = source.Target.Mode, MonitorName = source.Target.MonitorName };
+        Values = source.Values;
+    }
+
+    // The editor's dirty check. Id is left out so a working copy compares equal to its source.
+    public bool HasSameContentAs(Profile other) =>
+        Name == other.Name
+        && Hotkey == other.Hotkey
+        && Target.Mode == other.Target.Mode
+        && Target.MonitorName == other.Target.MonitorName
+        && Values == other.Values;
 }
