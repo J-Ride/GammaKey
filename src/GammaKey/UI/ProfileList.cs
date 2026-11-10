@@ -56,12 +56,9 @@ public sealed class ProfileList : ListBox
         var subRect = new Rectangle(nameRect.Left, nameRect.Bottom, nameRect.Width, S(14));
         TextRenderer.DrawText(g, GammaKey.UI.Format.ProfileSummary(profile), Theme.Caption, subRect, Theme.TextDim, TextFormatFlags.Left | TextFormatFlags.NoPadding | TextFormatFlags.EndEllipsis);
 
-        // Chips centre on the row; DrawChip centres on the line height it is given.
+        // Chips centre on the row; DrawChip centres on the line it is given.
         int x = textRight;
-        var state = g.Save();
-        g.TranslateTransform(0, row.Top);
         foreach (var part in parts)
-            x = GkHotkeyBox.DrawChip(g, part, x, row.Height, DeviceDpi, selected ? Theme.Accent : Theme.TextMuted, selected ? Theme.AccentDim : Theme.Line) + S(Theme.Space1);
-        g.Restore(state);
+            x = GkHotkeyBox.DrawChip(g, part, x, row.Top, row.Height, DeviceDpi, selected ? Theme.Accent : Theme.TextMuted, selected ? Theme.AccentDim : Theme.Line) + S(Theme.Space1);
     }
 }
