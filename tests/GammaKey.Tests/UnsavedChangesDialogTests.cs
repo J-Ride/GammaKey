@@ -26,4 +26,13 @@ public class UnsavedChangesDialogTests
 
         Assert.Equal("Cave has unsaved changes.", dialog.Message);
     }
+
+    [Fact]
+    public void LongNameMakesTheDialogTaller()
+    {
+        using var shortName = new UnsavedChangesDialog("Cave");
+        using var longName = new UnsavedChangesDialog(new string('x', 40) + " " + new string('y', 40) + " " + new string('z', 40));
+
+        Assert.True(longName.ClientSize.Height > shortName.ClientSize.Height);
+    }
 }

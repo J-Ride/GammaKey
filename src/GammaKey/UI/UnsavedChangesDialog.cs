@@ -6,7 +6,7 @@ public enum UnsavedChoice { SaveAndApply, Discard }
 // user is never left in a dead end. Escape and the close box count as Discard changes.
 public sealed class UnsavedChangesDialog : Form
 {
-    private readonly Label _message = new() { AutoSize = true, Font = Theme.Label, ForeColor = Theme.TextPrimary, Margin = new Padding(0, 0, 0, Theme.Space4), MaximumSize = new Size(380, 0) };
+    private readonly Label _message = new() { AutoSize = true, UseMnemonic = false, Font = Theme.Label, ForeColor = Theme.TextPrimary, Margin = new Padding(0, 0, 0, Theme.Space4), MaximumSize = new Size(380, 0) };
 
     public UnsavedChangesDialog(string profileName)
     {
@@ -43,6 +43,8 @@ public sealed class UnsavedChangesDialog : Form
         Theme.Apply(this);
         Theme.StylePrimary(save);
         ResumeLayout(true);
+        // The height follows the wrapped message so the buttons stay reachable for a long name.
+        ClientSize = new Size(ClientSize.Width, buttons.Bottom + stack.Padding.Bottom);
     }
 
     public string Message => _message.Text;
