@@ -77,7 +77,8 @@ public sealed class GkHotkeyBox : Control
         }
         using (var p = new Pen(Focused ? Theme.Accent : (_isRefused ? Theme.Warning : Theme.Line))) Theme.DrawRounded(g, p, r, Theme.Radius);
 
-        int x = Theme.Space2;
+        int S(int v) => Theme.Scale(v, DeviceDpi);
+        int x = S(Theme.Space2);
         var parts = Format.HotkeyParts(_combo);
         if (parts.Length == 0)
         {
@@ -88,22 +89,23 @@ public sealed class GkHotkeyBox : Control
             Color chipText = !Enabled ? Theme.TextDim : (_isRefused ? Theme.Warning : Theme.TextPrimary);
             foreach (var part in parts)
             {
-                x = DrawChip(g, part, x, chipText, _isRefused ? Theme.Warning : Theme.LineStrong) + Theme.Space1;
+                x = DrawChip(g, part, x, Height, DeviceDpi, chipText, _isRefused ? Theme.Warning : Theme.LineStrong) + S(Theme.Space1);
             }
         }
 
         string hint = Focused ? "Esc to cancel · Backspace clears" : (_isRefused ? "in use by another app" : "");
         if (hint.Length > 0)
-            TextRenderer.DrawText(g, hint, Theme.Caption, new Rectangle(0, 0, Width - Theme.Space2, Height), _isRefused && !Focused ? Theme.Warning : Theme.TextDim, TextFormatFlags.Right | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
+            TextRenderer.DrawText(g, hint, Theme.Caption, new Rectangle(0, 0, Width - S(Theme.Space2), Height), _isRefused && !Focused ? Theme.Warning : Theme.TextDim, TextFormatFlags.Right | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
     }
 
-    // A keycap: mono text in a box with a 2 px bottom edge. Shared look with the profile list and the toast.
-    internal static int DrawChip(Graphics g, string text, int x, Color textColor, Color border)
+    // A keycap: mono text in a box with a 2 px bottom edge, centred on a line of lineHeight device
+    // pixels. Shared look with the profile list.
+    internal static int DrawChip(Graphics g, string text, int x, int lineHeight, float dpi, Color textColor, Color border)
     {
         var size = TextRenderer.MeasureText(g, text, Theme.MonoSmall, Size.Empty, TextFormatFlags.NoPadding);
-        int h = size.Height + 6;
-        int w = size.Width + 12;
-        var chip = new Rectangle(x, (Theme.ControlHeight - h) / 2 - 1, w, h);
+        int h = size.Height + Theme.Scale(6, dpi);
+        int w = size.Width + Theme.Scale(12, dpi);
+        var chip = new Rectangle(x, (lineHeight - h) / 2 - 1, w, h);
         using (var b = new SolidBrush(Theme.Background)) Theme.FillRounded(g, b, chip, 3);
         using (var p = new Pen(border)) Theme.DrawRounded(g, p, chip, 3);
         using (var bottom = new Pen(border, 2f)) g.DrawLine(bottom, chip.Left + 3, chip.Bottom, chip.Right - 3, chip.Bottom);

@@ -42,7 +42,9 @@ public sealed class GkSlider : Control
     // Label text under the track for minimum, origin and maximum.
     public Func<int, string>? ScaleFormatter { get; set; }
 
-    private Rectangle TrackRect => new(Theme.SliderThumbSize / 2, (TrackRowHeight - Theme.SliderTrackHeight) / 2, Width - Theme.SliderThumbSize, Theme.SliderTrackHeight);
+    private int S(int v) => Theme.Scale(v, DeviceDpi);
+
+    private Rectangle TrackRect => new(S(Theme.SliderThumbSize) / 2, (S(TrackRowHeight) - S(Theme.SliderTrackHeight)) / 2, Width - S(Theme.SliderThumbSize), S(Theme.SliderTrackHeight));
 
     private int ValueToX(int v)
     {
@@ -72,7 +74,7 @@ public sealed class GkSlider : Control
             for (int i = 0; i <= 10; i++)
             {
                 int tx = track.Left + (int)Math.Round(track.Width * i / 10.0);
-                g.DrawLine(tick, tx, track.Bottom + 2, tx, track.Bottom + 5);
+                g.DrawLine(tick, tx, track.Bottom + S(2), tx, track.Bottom + S(5));
             }
 
         int originX = ValueToX(Math.Clamp(Origin, _minimum, _maximum));
@@ -86,7 +88,7 @@ public sealed class GkSlider : Control
         using (var originPen = new Pen(Theme.TextMuted)) g.DrawLine(originPen, originX, track.Top - 3, originX, track.Bottom + 3);
 
         // Diamond thumb: a rotated square, white with an accent outline.
-        int half = Theme.SliderThumbSize / 2;
+        int half = S(Theme.SliderThumbSize) / 2;
         var thumbCentre = new PointF(valueX, track.Top + track.Height / 2f);
         var diamond = new[]
         {
@@ -99,7 +101,7 @@ public sealed class GkSlider : Control
         using (var outline = new Pen(Enabled ? (_dragging || Focused ? Theme.Accent : Theme.Background) : Theme.TextDim, 2f)) g.DrawPolygon(outline, diamond);
 
         var formatter = ScaleFormatter ?? (v => Format.Signed(v, 0));
-        var scaleRect = new Rectangle(0, TrackRowHeight, Width, ScaleRowHeight);
+        var scaleRect = new Rectangle(0, S(TrackRowHeight), Width, S(ScaleRowHeight));
         var scaleColor = Enabled ? Theme.TextDim : Theme.Raised;
         // An origin at the minimum (Vibrance) has no useful label of its own, so the middle value stands in.
         int centreValue = Origin <= _minimum ? (_minimum + _maximum) / 2 : Math.Clamp(Origin, _minimum, _maximum);

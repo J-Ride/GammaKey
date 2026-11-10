@@ -13,7 +13,8 @@ public sealed class GkDropdown : ComboBox
         DropDownStyle = ComboBoxStyle.DropDownList;
         DrawMode = DrawMode.OwnerDrawFixed;
         FlatStyle = FlatStyle.Flat;
-        ItemHeight = Theme.ControlHeight - 6;
+        // The form's scale pass does not touch ItemHeight, so set it in device pixels here.
+        ItemHeight = Theme.Scale(Theme.ControlHeight - 6, DeviceDpi);
         BackColor = Theme.Surface;
         ForeColor = Theme.TextPrimary;
         Font = Theme.Label;
@@ -30,7 +31,7 @@ public sealed class GkDropdown : ComboBox
             using var bar = new SolidBrush(Theme.Accent);
             e.Graphics.FillRectangle(bar, e.Bounds.Left, e.Bounds.Top, 2, e.Bounds.Height);
         }
-        var text = new Rectangle(e.Bounds.Left + Theme.Space2, e.Bounds.Top, e.Bounds.Width - Theme.Space2, e.Bounds.Height);
+        var text = new Rectangle(e.Bounds.Left + Theme.Scale(Theme.Space2, DeviceDpi), e.Bounds.Top, e.Bounds.Width - Theme.Scale(Theme.Space2, DeviceDpi), e.Bounds.Height);
         TextRenderer.DrawText(e.Graphics, Items[e.Index]?.ToString(), Theme.Label, text, Enabled ? Theme.TextPrimary : Theme.TextDim, TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
     }
 
@@ -57,9 +58,10 @@ public sealed class GkDropdown : ComboBox
             using var pen = new Pen(Focused ? Theme.Accent : Theme.Line);
             g.DrawPath(pen, path);
         }
-        using var ap = new Pen(Enabled ? Theme.Accent : Theme.TextDim, 1.5f);
+        float k = DeviceDpi / 96f;
+        using var ap = new Pen(Enabled ? Theme.Accent : Theme.TextDim, 1.5f * k);
         float cx = arrowBox.Left + arrowBox.Width / 2f;
         float cy = Height / 2f - 1;
-        g.DrawLines(ap, new[] { new PointF(cx - 4, cy - 2), new PointF(cx, cy + 2), new PointF(cx + 4, cy - 2) });
+        g.DrawLines(ap, new[] { new PointF(cx - 4 * k, cy - 2 * k), new PointF(cx, cy + 2 * k), new PointF(cx + 4 * k, cy - 2 * k) });
     }
 }

@@ -39,7 +39,7 @@ public sealed class GkIconButton : Control
             using var halo = new Pen(Theme.AccentGlow, 3f);
             Theme.DrawRounded(g, halo, Rectangle.Inflate(r, -1, -1), Theme.Radius);
         }
-        GkIcons.Draw(g, Icon, ClientRectangle, glyph);
+        GkIcons.Draw(g, Icon, ClientRectangle, DeviceDpi, glyph);
     }
 
     protected override void OnMouseEnter(EventArgs e) { _hover = true; Invalidate(); base.OnMouseEnter(e); }

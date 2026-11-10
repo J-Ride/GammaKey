@@ -20,4 +20,23 @@ public class ThemeTests
 
         Assert.Equal(System.Drawing.FontFamily.GenericSansSerif.Name, family);
     }
+
+    [Fact]
+    public void ScaleIsIdentityAt96Dpi()
+    {
+        Assert.Equal(30, Theme.Scale(30, 96f));
+    }
+
+    [Fact]
+    public void ScaleGrowsByHalfAt144Dpi()
+    {
+        Assert.Equal(45, Theme.Scale(30, 144f));
+    }
+
+    [Fact]
+    public void ScaleRoundsHalvesAwayFromZero()
+    {
+        // 7 * 1.5 = 10.5; banker's rounding would give 10 and shave a pixel off every odd size.
+        Assert.Equal(11, Theme.Scale(7, 144f));
+    }
 }

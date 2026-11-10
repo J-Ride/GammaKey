@@ -47,6 +47,9 @@ public sealed class MainForm : Form
     public MainForm(AppController controller)
     {
         _controller = controller;
+        // Setting AutoScaleMode on a live form runs the DPI scale pass at once, on an empty form.
+        // Suspend first so the pass runs once, over the whole tree, at ResumeLayout below.
+        SuspendLayout();
         Text = "GammaKey";
         WindowChrome.Apply(this);
         Width = 960;
@@ -80,6 +83,8 @@ public sealed class MainForm : Form
 
         BuildLayout();
         Theme.Apply(this);
+        // Every control now exists; a control added after this line would not be scaled.
+        ResumeLayout(true);
         LoadMonitorsIntoTarget();
         RefreshProfileList();
         RefreshStatus();
