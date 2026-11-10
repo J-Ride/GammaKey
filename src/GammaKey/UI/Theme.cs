@@ -47,6 +47,10 @@ public static class Theme
     public const int SliderTrackHeight = 4;
     public const int SliderThumbSize = 14;
 
+    // Layout values are authored at 96 dpi. The form's auto-scale pass handles control bounds;
+    // owner-drawn paint code and the toast call this for everything else.
+    public static int Scale(int logical, float dpi) => (int)Math.Round(logical * dpi / 96f, MidpointRounding.AwayFromZero);
+
     // GDI+ silently substitutes Microsoft Sans Serif for a missing family, so pick the first
     // installed name here and fall back to the generic sans instead.
     public static string ResolveFamily(params string[] candidates)
