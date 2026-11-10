@@ -102,18 +102,20 @@ public sealed class GkHotkeyBox : Control
     // is lineHeight device pixels tall. Shared look with the profile list. The caller passes y
     // instead of translating the Graphics because TextRenderer draws with GDI and ignores GDI+
     // transforms, so a translated chip would keep its box but lose its text to row 0.
-    internal static int ChipHeightFor(float dpi) => Theme.FontsFor(dpi).MonoSmall.Height + Theme.Scale(6, dpi);
+    // The hotkey box uses the small mono font; the profile list passes the larger one.
+    internal static int ChipHeightFor(float dpi, Font? font = null) => (font ?? Theme.FontsFor(dpi).MonoSmall).Height + Theme.Scale(6, dpi);
 
-    internal static int DrawChip(Graphics g, string text, int x, int y, int lineHeight, float dpi, Color textColor, Color border)
+    internal static int DrawChip(Graphics g, string text, int x, int y, int lineHeight, float dpi, Color textColor, Color border, Font? font = null)
     {
-        var size = TextRenderer.MeasureText(g, text, Theme.FontsFor(dpi).MonoSmall, Size.Empty, TextFormatFlags.NoPadding);
-        int h = ChipHeightFor(dpi);
+        font ??= Theme.FontsFor(dpi).MonoSmall;
+        var size = TextRenderer.MeasureText(g, text, font, Size.Empty, TextFormatFlags.NoPadding);
+        int h = ChipHeightFor(dpi, font);
         int w = size.Width + Theme.Scale(12, dpi);
         var chip = new Rectangle(x, y + (lineHeight - h) / 2 - 1, w, h);
         using (var b = new SolidBrush(Theme.Background)) Theme.FillRounded(g, b, chip, 3);
         using (var p = new Pen(border)) Theme.DrawRounded(g, p, chip, 3);
         using (var bottom = new Pen(border, 2f)) g.DrawLine(bottom, chip.Left + 3, chip.Bottom, chip.Right - 3, chip.Bottom);
-        TextRenderer.DrawText(g, text, Theme.FontsFor(dpi).MonoSmall, chip, textColor, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
+        TextRenderer.DrawText(g, text, font, chip, textColor, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
         return chip.Right;
     }
 }
