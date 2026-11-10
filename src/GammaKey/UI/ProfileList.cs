@@ -17,7 +17,7 @@ public sealed class ProfileList : ListBox
     }
 
     // One line, the taller of the name and a hotkey chip, plus a Space2 band above and below.
-    public static int RowHeightFor(float dpi) => Math.Max(Theme.FontsFor(dpi).Label.Height, GkHotkeyBox.ChipHeightFor(dpi)) + 2 * Theme.Scale(Theme.Space2, dpi);
+    public static int RowHeightFor(float dpi) => Math.Max(Theme.FontsFor(dpi).ListName.Height, GkHotkeyBox.ChipHeightFor(dpi, Theme.FontsFor(dpi).Mono)) + 2 * Theme.Scale(Theme.Space2, dpi);
 
     protected override void OnDpiChangedAfterParent(EventArgs e)
     {
@@ -56,15 +56,15 @@ public sealed class ProfileList : ListBox
         var fonts = Theme.FontsFor(DeviceDpi);
         var parts = GammaKey.UI.Format.HotkeyParts(profile.Hotkey);
         int chipsWidth = 0;
-        foreach (var part in parts) chipsWidth += TextRenderer.MeasureText(g, part, fonts.MonoSmall, Size.Empty, TextFormatFlags.NoPadding).Width + S(12) + S(Theme.Space1);
+        foreach (var part in parts) chipsWidth += TextRenderer.MeasureText(g, part, fonts.Mono, Size.Empty, TextFormatFlags.NoPadding).Width + S(12) + S(Theme.Space1);
         int textRight = row.Right - S(Theme.Space2) - chipsWidth;
 
         var nameRect = new Rectangle(row.Left + S(Theme.Space3), row.Top, textRight - row.Left - S(Theme.Space3), row.Height);
-        TextRenderer.DrawText(g, profile.Name, fonts.Label, nameRect, Theme.TextPrimary, TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding | TextFormatFlags.EndEllipsis);
+        TextRenderer.DrawText(g, profile.Name, fonts.ListName, nameRect, Theme.TextPrimary, TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding | TextFormatFlags.EndEllipsis);
 
         // Chips centre on the row; DrawChip centres on the line it is given.
         int x = textRight;
         foreach (var part in parts)
-            x = GkHotkeyBox.DrawChip(g, part, x, row.Top, row.Height, DeviceDpi, selected ? Theme.Accent : Theme.TextMuted, selected ? Theme.AccentDim : Theme.Line) + S(Theme.Space1);
+            x = GkHotkeyBox.DrawChip(g, part, x, row.Top, row.Height, DeviceDpi, selected ? Theme.Accent : Theme.TextMuted, selected ? Theme.AccentDim : Theme.Line, fonts.Mono) + S(Theme.Space1);
     }
 }

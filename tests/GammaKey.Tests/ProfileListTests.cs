@@ -8,7 +8,7 @@ public class ProfileListTests
     [Fact]
     public void RowHeightAt96DpiFitsTheNameLinePlusSpacing()
     {
-        int needed = Theme.FontsFor(96f).Label.Height + 2 * Theme.Space2;
+        int needed = Theme.FontsFor(96f).ListName.Height + 2 * Theme.Space2;
 
         Assert.True(ProfileList.RowHeightFor(96f) >= needed);
     }
@@ -16,7 +16,7 @@ public class ProfileListTests
     [Fact]
     public void RowHeightAt144DpiFitsTheNameLinePlusScaledSpacing()
     {
-        int needed = Theme.FontsFor(144f).Label.Height + 2 * Theme.Scale(Theme.Space2, 144f);
+        int needed = Theme.FontsFor(144f).ListName.Height + 2 * Theme.Scale(Theme.Space2, 144f);
 
         Assert.True(ProfileList.RowHeightFor(144f) >= needed);
     }

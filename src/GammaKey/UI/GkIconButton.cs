@@ -34,7 +34,9 @@ public sealed class GkIconButton : Control
         if (!Enabled) { back = Theme.Surface; border = Theme.Line; glyph = Theme.TextDim; }
         using (var b = new SolidBrush(back)) Theme.FillRounded(g, b, r, Theme.Radius);
         using (var p = new Pen(border)) Theme.DrawRounded(g, p, r, Theme.Radius);
-        if (Focused && !IsPrimary)
+        // ShowFocusCues is on only after keyboard navigation, so focus handed back by a closing
+        // dialog (Export, Import) does not leave the button glowing until the next click.
+        if (Focused && ShowFocusCues && !IsPrimary)
         {
             using var halo = new Pen(Theme.AccentGlow, 3f);
             Theme.DrawRounded(g, halo, Rectangle.Inflate(r, -1, -1), Theme.Radius);

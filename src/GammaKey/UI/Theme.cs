@@ -46,6 +46,7 @@ public static class Theme
         {
             Title = Px(Sans, 12f, dpi, FontStyle.Bold);
             Label = Px(Sans, 9.5f, dpi);
+            ListName = Px(Sans, 11f, dpi);
             Eyebrow = Px(Sans, 8f, dpi, FontStyle.Bold);
             Mono = Px(MonoFamily, 9.5f, dpi);
             MonoSmall = Px(MonoFamily, 7.5f, dpi);
@@ -54,6 +55,8 @@ public static class Theme
 
         public Font Title { get; }
         public Font Label { get; }
+        // Profile rows: the list is scanned from across the room, so its names run larger than body text.
+        public Font ListName { get; }
         public Font Eyebrow { get; }
         public Font Mono { get; }
         public Font MonoSmall { get; }
