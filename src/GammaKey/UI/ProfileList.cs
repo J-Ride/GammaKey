@@ -32,9 +32,10 @@ public sealed class ProfileList : ListBox
         if (e.Index < 0 || Items[e.Index] is not Profile profile) return;
         var g = e.Graphics;
         g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+        int S(int v) => Theme.Scale(v, DeviceDpi);
         bool selected = (e.State & DrawItemState.Selected) != 0;
         using (var back = new SolidBrush(Theme.Panel)) g.FillRectangle(back, e.Bounds);
-        var row = new Rectangle(e.Bounds.Left + Theme.Space2, e.Bounds.Top + 1, e.Bounds.Width - 2 * Theme.Space2 - 1, e.Bounds.Height - 3);
+        var row = new Rectangle(e.Bounds.Left + S(Theme.Space2), e.Bounds.Top + 1, e.Bounds.Width - 2 * S(Theme.Space2) - 1, e.Bounds.Height - 3);
         if (selected)
         {
             using var fill = new SolidBrush(Theme.Surface);
@@ -47,20 +48,20 @@ public sealed class ProfileList : ListBox
 
         var parts = GammaKey.UI.Format.HotkeyParts(profile.Hotkey);
         int chipsWidth = 0;
-        foreach (var part in parts) chipsWidth += TextRenderer.MeasureText(g, part, Theme.MonoSmall, Size.Empty, TextFormatFlags.NoPadding).Width + 12 + Theme.Space1;
-        int textRight = row.Right - Theme.Space2 - chipsWidth;
+        foreach (var part in parts) chipsWidth += TextRenderer.MeasureText(g, part, Theme.MonoSmall, Size.Empty, TextFormatFlags.NoPadding).Width + S(12) + S(Theme.Space1);
+        int textRight = row.Right - S(Theme.Space2) - chipsWidth;
 
-        var nameRect = new Rectangle(row.Left + Theme.Space3, row.Top + 5, textRight - row.Left - Theme.Space3, 18);
+        var nameRect = new Rectangle(row.Left + S(Theme.Space3), row.Top + S(5), textRight - row.Left - S(Theme.Space3), S(18));
         TextRenderer.DrawText(g, profile.Name, Theme.Label, nameRect, Theme.TextPrimary, TextFormatFlags.Left | TextFormatFlags.NoPadding | TextFormatFlags.EndEllipsis);
-        var subRect = new Rectangle(nameRect.Left, nameRect.Bottom, nameRect.Width, 14);
+        var subRect = new Rectangle(nameRect.Left, nameRect.Bottom, nameRect.Width, S(14));
         TextRenderer.DrawText(g, GammaKey.UI.Format.ProfileSummary(profile), Theme.Caption, subRect, Theme.TextDim, TextFormatFlags.Left | TextFormatFlags.NoPadding | TextFormatFlags.EndEllipsis);
 
-        // Chips sit on the row's vertical centre; DrawChip assumes a ControlHeight-tall line, so offset.
+        // Chips centre on the row; DrawChip centres on the line height it is given.
         int x = textRight;
         var state = g.Save();
-        g.TranslateTransform(0, row.Top + (row.Height - Theme.ControlHeight) / 2f);
+        g.TranslateTransform(0, row.Top);
         foreach (var part in parts)
-            x = GkHotkeyBox.DrawChip(g, part, x, selected ? Theme.Accent : Theme.TextMuted, selected ? Theme.AccentDim : Theme.Line) + Theme.Space1;
+            x = GkHotkeyBox.DrawChip(g, part, x, row.Height, selected ? Theme.Accent : Theme.TextMuted, selected ? Theme.AccentDim : Theme.Line) + S(Theme.Space1);
         g.Restore(state);
     }
 }
