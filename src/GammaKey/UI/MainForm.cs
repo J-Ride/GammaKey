@@ -45,7 +45,12 @@ public sealed class MainForm : Form
     private readonly Dictionary<GkSlider, GkNumber> _numbers = new();
     private readonly List<GkIconButton> _profileButtons = new();
 
+    // _saved is the profile inside Settings.Profiles; _editing is its working copy. Edits and
+    // previews touch _editing only, so Revert is a fresh copy and nothing is written until Apply.
+    private Profile? _saved;
     private Profile? _editing;
+    private readonly Button _applyButton = new() { Text = "Apply", AutoSize = true, MinimumSize = new Size(72, Theme.ControlHeight), Margin = Padding.Empty, Enabled = false };
+    private readonly Button _revertButton = new() { Text = "Revert", AutoSize = true, MinimumSize = new Size(72, Theme.ControlHeight), Margin = new Padding(0, 0, Theme.Space2, 0), Enabled = false };
     private string? _activeProfileId;
     private bool _loading;
 
@@ -87,6 +92,7 @@ public sealed class MainForm : Form
 
         BuildLayout();
         Theme.Apply(this);
+        Theme.StylePrimary(_applyButton);
         // Every control now exists; a control added after this line would not be scaled.
         ResumeLayout(true);
         // Set after the scale pass, in device pixels, so the pass can neither skip nor double it.
@@ -104,6 +110,7 @@ public sealed class MainForm : Form
             LoadSelectedProfile(apply: false);
         }
         SetEditorEnabled(_editing is not null);
+        RefreshDirty();
     }
 
     public void ShowAndFocus()
@@ -187,6 +194,14 @@ public sealed class MainForm : Form
         two.Controls.Add(hotkeyRow, 0, 0);
         two.Controls.Add(targetRow, 1, 0);
         profileGroup.Content.Controls.Add(two);
+        // Right aligned: RightToLeft flow puts the first control at the right edge, so Apply
+        // sits at the far right with Revert to its left. GkGroup widens the row to the group.
+        var editActions = new FlowLayoutPanel { FlowDirection = FlowDirection.RightToLeft, AutoSize = false, Height = Theme.ControlHeight + 4, Margin = new Padding(0, Theme.Space1, 0, 0), BackColor = Theme.Panel };
+        editActions.Controls.Add(_applyButton);
+        editActions.Controls.Add(_revertButton);
+        _applyButton.Click += (_, _) => ApplyEdits();
+        _revertButton.Click += (_, _) => RevertEdits();
+        profileGroup.Content.Controls.Add(editActions);
         editor.Controls.Add(profileGroup);
 
         var curveGroup = new GkGroup("Curve", "GDI gamma ramp");
@@ -232,9 +247,10 @@ public sealed class MainForm : Form
         bar.Controls.Add(_savedLine, 2, 0);
         root.Controls.Add(bar, 0, 2);
 
-        _nameBox.TextChanged += (_, _) => { if (_editing is not null && !_loading) { _editing.Name = _nameBox.Text; _heading.Text = _nameBox.Text; _controller.Save(); } };
-        _hotkeyBox.ComboChanged += (_, _) => { if (_editing is not null && !_loading) { _editing.Hotkey = _hotkeyBox.Combo; SaveSettingsAndRegister(_hotkeyBox); } };
-        _targetBox.SelectedIndexChanged += (_, _) => { if (_editing is not null && !_loading) { _editing.Target = TargetFromCombo(); _controller.Save(); _status.Text = _controller.ApplyProfile(_editing).Note ?? ""; } };
+        _nameBox.TextChanged += (_, _) => { if (_editing is not null && !_loading) { _editing.Name = _nameBox.Text; RefreshDirty(); } };
+        _hotkeyBox.ComboChanged += (_, _) => { if (_editing is not null && !_loading) { _editing.Hotkey = _hotkeyBox.Combo; _hotkeyBox.IsRefused = false; RefreshDirty(); } };
+        // A new target previews the working copy there; it is saved and made active only by Apply.
+        _targetBox.SelectedIndexChanged += (_, _) => { if (_editing is not null && !_loading) { _editing.Target = TargetFromCombo(); _status.Text = _controller.Preview(_editing.Values, _editing.Target).Note ?? ""; RefreshDirty(); } };
         _profileList.SelectedIndexChanged += (_, _) => LoadSelectedProfile();
 
         if (!_controller.Vibrance.IsAvailable)
@@ -302,14 +318,7 @@ public sealed class MainForm : Form
             bar.Value = isGamma ? (int)Math.Round(number.Value * 100) : (int)number.Value;
             _loading = false;
             PushValuesToProfileAndPreview();
-            SaveIfEditing();
         };
-        // Saving on every drag tick would write the file many times a second, so save when
-        // the drag or key press ends. A capture loss (Alt+Tab mid-drag) also ends the drag.
-        bar.MouseUp += (_, _) => SaveIfEditing();
-        bar.KeyUp += (_, _) => SaveIfEditing();
-        bar.MouseCaptureChanged += (_, _) => SaveIfEditing();
-        bar.MouseWheel += (_, _) => SaveIfEditing();
 
         var panel = new TableLayoutPanel { ColumnCount = 3, RowCount = 1, Margin = new Padding(0, 2, 0, 2), Height = bar.Height + 4, BackColor = Theme.Panel };
         panel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, Theme.LabelColumnWidth));
@@ -406,7 +415,7 @@ public sealed class MainForm : Form
         // Duplicate and Delete need a selection; Add, Import and Export never do.
         _profileButtons[1].Enabled = on;
         _profileButtons[2].Enabled = on;
-        if (!on) { _heading.Text = "No profile selected"; _activeTag.Visible = false; }
+        if (!on) _activeTag.Visible = false;
     }
 
     private void RefreshProfileList(bool keepSelection = false)
@@ -422,12 +431,24 @@ public sealed class MainForm : Form
     {
         if (_loading) return;
         var index = _profileList.SelectedIndex;
-        if (index < 0 || index >= _controller.Settings.Profiles.Count) { _editing = null; SetEditorEnabled(false); return; }
-        _editing = _controller.Settings.Profiles[index];
+        if (index < 0 || index >= _controller.Settings.Profiles.Count) { ClearEditor(); return; }
+        _saved = _controller.Settings.Profiles[index];
+        _editing = _saved.CopyForEditing();
         SetEditorEnabled(true);
-        _heading.Text = _editing.Name;
         _activeTag.Visible = _editing.Id == _activeProfileId;
+        ShowEditing();
+        _hotkeyBox.IsRefused = false;
+        RefreshDirty();
+        if (!apply) return;
+        // Clicking a profile is the same as pressing its hotkey: the screen changes at once.
+        var result = _controller.ApplyProfile(_saved);
+        _status.Text = result.Note ?? "";
+    }
 
+    // Pushes the working copy into every editor control without firing their change handlers.
+    private void ShowEditing()
+    {
+        if (_editing is null) return;
         _loading = true;
         _nameBox.Text = _editing.Name;
         _hotkeyBox.Combo = _editing.Hotkey;
@@ -447,11 +468,46 @@ public sealed class MainForm : Form
         foreach (var (bar, number) in _numbers)
             number.Value = ReferenceEquals(bar, _gamma) ? bar.Value / 100m : bar.Value;
         _loading = false;
+    }
+
+    private void ClearEditor()
+    {
+        _saved = null;
+        _editing = null;
+        SetEditorEnabled(false);
+        RefreshDirty();
+    }
+
+    private bool IsDirty => _saved is not null && _editing is not null && !_editing.HasSameContentAs(_saved);
+
+    // The heading, Apply and Revert all follow the dirty state, so they change in one place.
+    private void RefreshDirty()
+    {
+        bool dirty = IsDirty;
+        _applyButton.Enabled = dirty;
+        _revertButton.Enabled = dirty;
+        _heading.Text = _editing is null ? "No profile selected" : (dirty ? _editing.Name + " *" : _editing.Name);
+    }
+
+    private void ApplyEdits()
+    {
+        if (_saved is null || _editing is null) return;
+        _saved.CopyContentFrom(_editing);
+        SaveSettingsAndRegister(_hotkeyBox);
+        var result = _controller.ApplyProfile(_saved);
+        if (result.Note is not null) _status.Text = string.Join(" ", new[] { _status.Text, result.Note }.Where(s => s.Length > 0));
+        RefreshDirty();
+    }
+
+    private void RevertEdits()
+    {
+        if (_saved is null) return;
+        _editing = _saved.CopyForEditing();
+        ShowEditing();
         _hotkeyBox.IsRefused = false;
-        if (!apply) return;
-        // Clicking a profile is the same as pressing its hotkey: the screen changes at once.
-        var result = _controller.ApplyProfile(_editing);
-        _status.Text = result.Note ?? "";
+        // The screen followed the working copy while it was edited; put the saved look back.
+        _status.Text = _controller.Preview(_saved.Values, _saved.Target).Note ?? "";
+        RefreshDirty();
     }
 
     private ColorValues CurrentValues() => new(_gamma.Value / 100.0, _brightness.Value, _contrast.Value, _shadows.Value, _highlights.Value, _vibrance.Value)
@@ -469,11 +525,7 @@ public sealed class MainForm : Form
         _editing.Values = CurrentValues();
         var result = _controller.Preview(_editing.Values, _editing.Target);
         _status.Text = result.Note ?? "";
-    }
-
-    private void SaveIfEditing()
-    {
-        if (_editing is not null && !_loading) _controller.Save();
+        RefreshDirty();
     }
 
     private void SaveSettingsAndRegister(GkHotkeyBox? changedBox = null)
@@ -504,9 +556,9 @@ public sealed class MainForm : Form
 
     private void DuplicateProfile()
     {
-        if (_editing is null) return;
-        var copy = _editing.Clone();
-        copy.Name = _editing.Name + " copy";
+        if (_saved is null) return;
+        var copy = _saved.Clone();
+        copy.Name = _saved.Name + " copy";
         _controller.Settings.Profiles.Add(copy);
         SaveSettingsAndRegister();
         _profileList.SelectedIndex = _controller.Settings.Profiles.Count - 1;
@@ -514,9 +566,9 @@ public sealed class MainForm : Form
 
     private void DeleteProfile()
     {
-        if (_editing is null) return;
-        var index = _controller.Settings.Profiles.IndexOf(_editing);
-        _controller.Settings.Profiles.Remove(_editing);
+        if (_saved is null) return;
+        var index = _controller.Settings.Profiles.IndexOf(_saved);
+        _controller.Settings.Profiles.Remove(_saved);
         SaveSettingsAndRegister();
         if (_profileList.Items.Count > 0)
         {
@@ -527,7 +579,7 @@ public sealed class MainForm : Form
             _loading = false;
             LoadSelectedProfile();
         }
-        else { _editing = null; SetEditorEnabled(false); }
+        else ClearEditor();
     }
 
     private void ExportProfiles()

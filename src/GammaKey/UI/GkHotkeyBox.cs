@@ -33,8 +33,8 @@ public sealed class GkHotkeyBox : Control
         set { _isRefused = value; Invalidate(); }
     }
 
-    // Every edit auto-saves, so Escape must not clear a hotkey; it goes to the form so a
-    // dialog's CancelButton still closes it.
+    // Escape must not clear a hotkey (Revert is the way back); it goes to the form so a dialog's
+    // CancelButton still closes it.
     protected override bool IsInputKey(Keys keyData) =>
         keyData is not (Keys.Tab or (Keys.Tab | Keys.Shift)) && (keyData & Keys.KeyCode) != Keys.Escape;
 
