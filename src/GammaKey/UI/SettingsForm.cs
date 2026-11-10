@@ -7,12 +7,12 @@ namespace GammaKey.UI;
 public sealed class SettingsForm : Form
 {
     private readonly AppController _controller;
-    private readonly CheckBox _startWithWindows = new() { Text = "Start with Windows", AutoSize = true };
-    private readonly CheckBox _showWindowOnLaunch = new() { Text = "Show window on launch", AutoSize = true };
-    private readonly CheckBox _showToast = new() { Text = "Show profile name on hotkey", AutoSize = true };
-    private readonly CheckBox _guard = new() { Text = "Re-apply if Windows resets the curve", AutoSize = true };
-    private readonly CheckBox _passthrough = new() { Text = "Let hotkeys pass through to other apps", AutoSize = true };
-    private readonly HotkeyCaptureBox _resetHotkeyBox = new() { Width = 320 };
+    private readonly GkToggle _startWithWindows = new() { Text = "Start with Windows", Description = "Runs in the tray at sign-in" };
+    private readonly GkToggle _showWindowOnLaunch = new() { Text = "Show window on launch", Description = "Off means tray only" };
+    private readonly GkToggle _showToast = new() { Text = "Show profile name on hotkey", Description = "1.5 s toast, bottom right" };
+    private readonly GkToggle _guard = new() { Text = "Re-apply if Windows resets the curve", Description = "Guards against fullscreen and driver resets" };
+    private readonly GkToggle _passthrough = new() { Text = "Let hotkeys pass through to other apps", Description = "System-wide keyboard hook. Prefer Ctrl or Alt combos instead.", Flag = "ANTI-CHEAT RISK" };
+    private readonly GkHotkeyBox _resetHotkeyBox = new();
     private readonly Label _status = new() { AutoSize = true, ForeColor = Theme.Warning, MaximumSize = new Size(340, 0), Margin = new Padding(0, Theme.Space2, 0, 0) };
     private readonly Action _onSettingsChanged;
     private bool _loading;
@@ -21,6 +21,7 @@ public sealed class SettingsForm : Form
     {
         _controller = controller;
         Text = "GammaKey settings";
+        WindowChrome.Apply(this);
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;
@@ -28,7 +29,7 @@ public sealed class SettingsForm : Form
         StartPosition = FormStartPosition.CenterParent;
         AutoScaleDimensions = new SizeF(96f, 96f);
         AutoScaleMode = AutoScaleMode.Dpi;
-        ClientSize = new Size(380, 330 + Theme.ControlHeight + Theme.Space2);
+        ClientSize = new Size(440, 500);
 
         BuildLayout();
         Theme.Apply(this);
@@ -42,26 +43,37 @@ public sealed class SettingsForm : Form
 
     private void BuildLayout()
     {
-        var stack = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown, WrapContents = false, Padding = new Padding(Theme.Space6) };
+        var stack = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown, WrapContents = false, Padding = new Padding(Theme.Space4), BackColor = Theme.Background };
         Controls.Add(stack);
 
-        foreach (var check in new[] { _startWithWindows, _showWindowOnLaunch, _showToast, _guard, _passthrough })
-        {
-            check.Margin = new Padding(0, 2, 0, 2);
-            stack.Controls.Add(check);
-        }
+        var startup = new GkGroup("Startup") { Margin = new Padding(0, 0, 0, Theme.Space3) };
+        AddToggles(startup, _startWithWindows, _showWindowOnLaunch);
+        stack.Controls.Add(startup);
 
-        stack.Controls.Add(new Label { Text = "Restore monitor hotkey", ForeColor = Theme.TextMuted, AutoSize = true, Margin = new Padding(0, Theme.Space3, 0, Theme.Space1) });
-        _resetHotkeyBox.Margin = Padding.Empty;
-        stack.Controls.Add(_resetHotkeyBox);
+        var behaviour = new GkGroup("Behaviour") { Margin = new Padding(0, 0, 0, Theme.Space3) };
+        AddToggles(behaviour, _showToast, _guard, _passthrough);
+        stack.Controls.Add(behaviour);
 
-        var buttons = new FlowLayoutPanel { AutoSize = true, Margin = new Padding(0, Theme.Space3, 0, 0) };
+        var reset = new GkGroup("Restore monitor hotkey") { Margin = new Padding(0, 0, 0, Theme.Space3) };
+        _resetHotkeyBox.Margin = new Padding(0, 2, 0, 4);
+        reset.Content.Controls.Add(_resetHotkeyBox);
+        stack.Controls.Add(reset);
+
+        var buttons = new FlowLayoutPanel { AutoSize = false, Height = Theme.ControlHeight, FlowDirection = FlowDirection.RightToLeft, Margin = Padding.Empty, BackColor = Theme.Background };
+        var close = new Button { Text = "Close", AutoSize = true, MinimumSize = new Size(72, Theme.ControlHeight), Margin = Padding.Empty, DialogResult = DialogResult.OK };
         var openFolder = new Button { Text = "Open profiles folder", AutoSize = true, MinimumSize = new Size(72, Theme.ControlHeight), Margin = new Padding(0, 0, Theme.Space2, 0) };
         openFolder.Click += (_, _) => Process.Start(new ProcessStartInfo("explorer.exe", $"\"{_controller.BaseDirectory}\"") { UseShellExecute = true });
-        buttons.Controls.Add(openFolder);
-        var close = new Button { Text = "Close", AutoSize = true, MinimumSize = new Size(72, Theme.ControlHeight), Margin = Padding.Empty, DialogResult = DialogResult.OK };
         buttons.Controls.Add(close);
+        buttons.Controls.Add(openFolder);
         stack.Controls.Add(buttons);
+
+        // Groups stretch to the stack width; a TopDown FlowLayoutPanel does not do that itself.
+        // Layout, not Resize: Resize does not fire for the initial size.
+        stack.Layout += (_, _) =>
+        {
+            int w = stack.ClientSize.Width - stack.Padding.Horizontal;
+            foreach (Control c in stack.Controls) if (c is GkGroup || c == buttons) c.Width = w;
+        };
         stack.Controls.Add(_status);
         CancelButton = close;
 
@@ -102,6 +114,18 @@ public sealed class SettingsForm : Form
         };
     }
 
+    // Rows are not docked: GkGroup.FitToContent sets each row's width.
+    private static void AddToggles(GkGroup group, params GkToggle[] toggles)
+    {
+        for (int i = 0; i < toggles.Length; i++)
+        {
+            toggles[i].Margin = Padding.Empty;
+            group.Content.Controls.Add(toggles[i]);
+            if (i < toggles.Length - 1)
+                group.Content.Controls.Add(new System.Windows.Forms.Panel { Height = 1, BackColor = Theme.Line, Margin = Padding.Empty });
+        }
+    }
+
     private void LoadSettingsIntoControls()
     {
         _loading = true;
@@ -116,14 +140,15 @@ public sealed class SettingsForm : Form
 
     private void SaveAndRegister()
     {
-        _controller.Save();
+        // Register before Save so the armed-hotkeys chip refreshed by SettingsChanged is current.
         var failed = _controller.RegisterHotkeys();
+        _controller.Save();
         var messages = new List<string>();
         if (failed.Count > 0) messages.Add($"Hotkey already used by another app: {string.Join(", ", failed)}. Pick another.");
         // A profile hotkey can still be refused after the Reset key is fixed, so the colour and
         // the no-modifier warning depend only on the Reset hotkey.
         bool isRefused = failed.Contains("Reset");
-        _resetHotkeyBox.ForeColor = isRefused ? Theme.Warning : Theme.TextPrimary;
+        _resetHotkeyBox.IsRefused = isRefused;
         if (!isRefused && _resetHotkeyBox.Combo.Length > 0 && !HotkeyCombo.HasModifier(_resetHotkeyBox.Combo) && !_controller.Settings.HotkeyPassthrough) messages.Add(HotkeyCombo.NoModifierWarning);
         _status.Text = string.Join(" ", messages);
     }

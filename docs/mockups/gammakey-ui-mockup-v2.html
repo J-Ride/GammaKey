@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GammaKey Tactical Mockup</title>
+<style>
+/* Layout: 960x680 window. Top status strip (monitor + engine state), left profile rail, editor with
+   a live curve graph beside the sliders, bottom status bar. Graphite neutrals with a cool bias,
+   one crosshair-cyan accent, amber for warnings, red only for destructive. Fonts are Windows-native
+   (Segoe UI Variable, Cascadia Mono) so the WinForms port can match exactly. Single dark theme. */
+:root{
+  --bg:#0b0d10; --panel:#111417; --surface:#171b20; --raised:#1f242b; --line:#262c34; --line-strong:#343c47;
+  --text:#e6eaef; --muted:#8b95a3; --dim:#5c6673;
+  --accent:#35d6f0; --accent-dim:#1aa6bd; --accent-glow:rgba(53,214,240,.18);
+  --warn:#f5b041; --danger:#ef5350; --ok:#5ad38a;
+  --sans:"Segoe UI",system-ui,sans-serif;
+  --mono:"Consolas",ui-monospace,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{margin:0;background:#06070a;color:var(--text);font:13px/1.45 var(--sans);
+  padding-block:32px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.page{max-width:1040px;margin:0 auto;display:grid;gap:44px}
+h1{font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0 0 10px;display:flex;align-items:center;gap:10px}
+h1::after{content:"";flex:1;height:1px;background:var(--line)}
+p.note{color:var(--muted);max-width:68ch;margin:0 0 16px}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+/* Window */
+.win{background:var(--bg);border:1px solid var(--line);border-radius:6px;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.7)}
+.titlebar{height:34px;display:flex;align-items:center;gap:10px;padding-left:12px;background:var(--bg);color:var(--muted);font-size:12px;border-bottom:1px solid var(--line)}
+.logo{width:16px;height:16px;position:relative}
+.logo::before,.logo::after{content:"";position:absolute;background:var(--accent);left:50%;top:50%;transform:translate(-50%,-50%)}
+.logo::before{width:16px;height:2px}.logo::after{width:2px;height:16px}
+.logo i{position:absolute;inset:4px;border:2px solid var(--accent);border-radius:50%;background:var(--bg)}
+.titlebar b{color:var(--text);font-weight:600;letter-spacing:.04em}
+.titlebar .ver{color:var(--dim);font-family:var(--mono);font-size:11px}
+.caps{margin-left:auto;display:flex}
+.caps span{width:46px;height:34px;display:grid;place-items:center;font-size:11px;color:var(--muted)}
+.caps span:hover{background:var(--raised)}
+.caps span:last-child:hover{background:#c42b1c;color:#fff}
+
+/* Status strip */
+.strip{display:flex;flex-wrap:wrap;gap:8px;padding:10px 16px;background:var(--panel);border-bottom:1px solid var(--line)}
+.chip{display:inline-flex;align-items:center;gap:8px;height:26px;padding:0 10px;border:1px solid var(--line);border-radius:4px;background:var(--surface);font-size:12px;color:var(--muted)}
+.chip b{color:var(--text);font-weight:500}
+.chip .dot{width:7px;height:7px;border-radius:50%;background:var(--dim)}
+.chip .dot.ok{background:var(--ok);box-shadow:0 0 6px var(--ok)}
+.chip .dot.warn{background:var(--warn)}
+.chip.mono{font-size:11.5px}
+
+/* Body */
+.body{display:grid;grid-template-columns:272px 1fr;min-height:560px}
+@media (max-width:820px){.body{grid-template-columns:1fr}}
+.rail{border-right:1px solid var(--line);background:var(--panel);display:flex;flex-direction:column}
+.rail-head{display:flex;align-items:center;justify-content:space-between;padding:12px 14px 6px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.rail-head .count{font-family:var(--mono);color:var(--dim);letter-spacing:0}
+.plist{flex:1;padding:4px 8px;display:flex;flex-direction:column;gap:2px}
+.prow{display:grid;grid-template-columns:1fr auto;align-items:center;gap:10px;padding:8px 8px;border-radius:4px;border:1px solid transparent}
+.prow:hover{background:var(--surface)}
+.prow.sel{background:var(--surface);border-color:var(--line-strong);box-shadow:inset 2px 0 0 var(--accent)}
+.prow .name{font-weight:500}
+.prow .sub{display:block;font-size:11px;color:var(--dim)}
+.prow kbd{font:500 10.5px var(--mono);color:var(--muted);background:var(--bg);border:1px solid var(--line);border-bottom-width:2px;border-radius:3px;padding:3px 6px;white-space:nowrap}
+.prow.sel kbd{color:var(--accent);border-color:var(--accent-dim)}
+.rail-actions{padding:10px 12px 12px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:8px}
+.icon-row{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.ibtn{height:30px;display:grid;place-items:center;border:1px solid var(--line);border-radius:4px;background:var(--surface);color:var(--muted);font-size:11px}
+.ibtn:hover{color:var(--text);border-color:var(--line-strong)}
+.ibtn.primary{color:var(--bg);background:var(--accent);border-color:var(--accent);font-weight:600}
+.ibtn.danger:hover{color:var(--danger);border-color:var(--danger)}
+.btn{height:32px;padding:0 14px;border-radius:4px;border:1px solid var(--line-strong);background:var(--surface);color:var(--text);display:inline-flex;align-items:center;justify-content:center;gap:8px;font:500 13px var(--sans)}
+.btn:hover{background:var(--raised);border-color:var(--muted)}
+.btn.ghost{border-color:var(--line);color:var(--muted)}
+.btn.accent{background:var(--accent);border-color:var(--accent);color:var(--bg);font-weight:600}
+.btn.accent:hover{background:#5fe0f5}
+
+/* Editor */
+.editor{padding:16px 20px 20px;display:grid;grid-template-columns:minmax(0,1fr);gap:16px;min-width:0;align-content:start}
+@media (max-width:1000px){.editor{grid-template-columns:1fr}}
+.ed-head{grid-column:1/-1;display:flex;align-items:center;gap:12px;margin-bottom:4px}
+.ed-head h2{margin:0;font-size:16px;font-weight:600;letter-spacing:.01em}
+.ed-head .tag{font:500 10.5px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--accent);border:1px solid var(--accent-dim);border-radius:3px;padding:2px 6px}
+.ed-head .right{margin-left:auto;display:flex;gap:8px}
+.group{border:1px solid var(--line);border-radius:5px;background:var(--panel);padding:12px 14px 10px;display:flex;flex-direction:column;gap:6px}
+.group-h{display:flex;align-items:center;gap:8px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+.group-h .k{margin-left:auto;font:500 10.5px var(--mono);color:var(--dim);letter-spacing:0;text-transform:none}
+.frow{display:grid;grid-template-columns:92px 1fr;align-items:center;min-height:36px;gap:12px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px 24px}
+@media (max-width:1000px){.two{grid-template-columns:1fr}}
+.frow label{color:var(--muted);font-size:12.5px}
+.input{height:30px;background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:0 10px;display:flex;align-items:center;color:var(--text);gap:8px}
+.input.focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-glow)}
+.input .hint{margin-left:auto;color:var(--dim);font-size:11.5px}
+.keys{display:flex;gap:4px}
+.keys kbd{font:500 11px var(--mono);color:var(--text);background:var(--bg);border:1px solid var(--line-strong);border-bottom-width:2px;border-radius:3px;padding:2px 7px}
+.keys kbd.cap{color:var(--accent)}
+.dropdown{justify-content:space-between}
+.chev{width:8px;height:8px;border-right:1.5px solid var(--accent);border-bottom:1.5px solid var(--accent);transform:rotate(45deg) translateY(-2px)}
+
+/* Slider row: label / track / number */
+.srow{display:grid;grid-template-columns:92px 1fr 72px;align-items:start;min-height:44px;gap:12px;padding-top:6px}
+.srow label,.srow .num{margin-top:0}
+.scale{display:flex;justify-content:space-between;font:10px var(--mono);color:var(--dim);margin-top:4px}
+.srow label{color:var(--muted);font-size:12.5px;display:flex;align-items:baseline;gap:6px}
+.srow label small{font:10px var(--mono);color:var(--dim)}
+.slider{position:relative;height:20px}
+.slider-wrap{min-width:0}
+.slider .track{position:absolute;top:8px;left:0;right:0;height:4px;border-radius:2px;background:var(--raised)}
+.slider .ticks{position:absolute;top:14px;left:0;right:0;height:4px;background:repeating-linear-gradient(90deg,var(--line-strong) 0 1px,transparent 1px 10%);opacity:.7}
+.slider .fill{position:absolute;top:8px;height:4px;background:var(--accent)}
+.slider .origin{position:absolute;top:5px;width:1px;height:10px;background:var(--muted)}
+.slider .thumb{position:absolute;top:3px;width:14px;height:14px;border-radius:2px;background:var(--text);border:2px solid var(--bg);outline:1px solid var(--accent);transform:translateX(-7px) rotate(45deg)}
+.slider.off .fill{background:var(--dim)}
+.slider.off .thumb{background:var(--dim);outline-color:var(--dim)}
+.num{height:28px;display:grid;grid-template-columns:1fr 16px;background:var(--surface);border:1px solid var(--line);border-radius:4px;overflow:hidden}
+.num .val{display:grid;place-items:center;font:500 12.5px var(--mono);font-variant-numeric:tabular-nums}
+.num .spin{display:grid;grid-template-rows:1fr 1fr;border-left:1px solid var(--line)}
+.num .spin i{display:grid;place-items:center}
+.num .spin i::before{content:"";width:5px;height:5px;border-left:1.5px solid var(--accent);border-top:1.5px solid var(--accent);transform:rotate(45deg) translate(1px,1px)}
+.num .spin i:last-child::before{transform:rotate(225deg) translate(1px,1px)}
+.num .spin i:hover{background:var(--raised)}
+.num.off .val{color:var(--dim)}.num.off .spin i::before{border-color:var(--dim)}
+.caption{grid-column:2/-1;font-size:11.5px;color:var(--dim);margin-top:-2px}
+.caption.warn{color:var(--warn);display:flex;gap:6px;align-items:center}
+
+/* Right column: curve preview + test ramp */
+.side{display:flex;flex-direction:column;gap:12px}
+.graph{border:1px solid var(--line);border-radius:5px;background:var(--panel);padding:10px}
+.graph-h{display:flex;justify-content:space-between;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.graph-h span:last-child{font-family:var(--mono);letter-spacing:0;text-transform:none;color:var(--dim)}
+.graph svg{display:block;width:100%;height:auto;background:var(--bg);border:1px solid var(--line);border-radius:3px}
+.ramp{border:1px solid var(--line);border-radius:5px;background:var(--panel);padding:10px}
+.ramp .bar{height:22px;border-radius:3px;background:linear-gradient(90deg,#000 0%,#fff 100%);border:1px solid var(--line)}
+.ramp .bar.after{background:linear-gradient(90deg,#000 0%,#2a2a2a 18%,#8a8a8a 50%,#ddd 78%,#fff 100%)}
+.ramp .lbl{display:flex;justify-content:space-between;font:10.5px var(--mono);color:var(--dim);margin:4px 0 8px}
+.ramp .steps{display:grid;grid-template-columns:repeat(8,1fr);gap:2px;margin-top:6px}
+.ramp .steps i{height:14px;border-radius:2px}
+.kv{display:grid;grid-template-columns:1fr auto;gap:4px 12px;font-size:12px;color:var(--muted);padding:2px 2px 0}
+.kv b{font:500 12px var(--mono);color:var(--text)}
+
+/* Status bar */
+.statusbar{display:flex;gap:18px;align-items:center;height:28px;padding:0 14px;border-top:1px solid var(--line);background:var(--panel);font:11.5px var(--mono);color:var(--dim)}
+.statusbar .ok{color:var(--ok)}
+.statusbar .sp{flex:1}
+
+/* Settings dialog */
+.dialog{width:440px;max-width:100%;margin:0 auto}
+.dbody{padding:16px 20px 20px;display:flex;flex-direction:column;gap:14px}
+.sgroup{border:1px solid var(--line);border-radius:5px;background:var(--panel);padding:10px 14px;display:flex;flex-direction:column}
+.toggle{display:grid;grid-template-columns:1fr auto;align-items:center;gap:12px;min-height:36px;border-bottom:1px solid var(--line)}
+.toggle:last-child{border-bottom:0}
+.toggle .t{font-size:13px}
+.toggle .d{display:block;font-size:11.5px;color:var(--dim)}
+.sw{width:34px;height:18px;border-radius:3px;background:var(--raised);border:1px solid var(--line-strong);position:relative;transition:background .15s}
+.sw::after{content:"";position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:2px;background:var(--muted);transition:transform .15s,background .15s}
+.sw.on{background:var(--accent-dim);border-color:var(--accent)}
+.sw.on::after{transform:translateX(16px);background:#fff}
+.flag{font:500 10px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--warn);border:1px solid rgba(245,176,65,.45);border-radius:3px;padding:1px 5px;margin-left:8px;vertical-align:middle}
+.dfoot{display:flex;gap:8px;justify-content:flex-end}
+
+/* Toast */
+.toast{display:inline-grid;grid-template-columns:auto 1fr;gap:0 14px;align-items:center;background:var(--panel);border:1px solid var(--line-strong);border-radius:5px;padding:10px 16px 10px 12px;box-shadow:0 16px 40px rgba(0,0,0,.6);position:relative;overflow:hidden}
+.toast::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--accent)}
+.toast .logo{grid-row:1/3;width:20px;height:20px}
+.toast .logo::before{width:20px}.toast .logo::after{height:20px}
+.toast .n{font-size:15px;font-weight:600}
+.toast .k{font:11px var(--mono);color:var(--muted)}
+
+/* Legend */
+.legend{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
+.legend div{background:var(--panel);border:1px solid var(--line);border-radius:5px;padding:10px 12px;font-size:12.5px;color:var(--muted)}
+.legend b{display:block;color:var(--text);font-weight:600;margin-bottom:2px}
+.legend b::before{content:"";display:inline-block;width:6px;height:6px;background:var(--accent);margin-right:8px;transform:rotate(45deg);vertical-align:middle}
+.swatches{display:flex;flex-wrap:wrap;gap:8px}
+.sw-item{display:flex;align-items:center;gap:8px;font:11.5px var(--mono);color:var(--muted)}
+.sw-item i{width:22px;height:22px;border-radius:3px;border:1px solid var(--line-strong)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="page">
+
+<section>
+  <h1>Main window</h1>
+  <p class="note">Graphite panels, one cyan accent reserved for the active profile, focus and the curve. A status strip at the top shows the monitor, refresh rate, HDR state and how many hotkeys are armed. The editor groups the fields into Profile, Curve and Color panels.</p>
+  <div class="win">
+    <div class="titlebar"><span class="logo"><i></i></span><b>GAMMAKEY</b><span class="ver">v1.0</span>
+      <div class="caps"><span>&#x2014;</span><span>&#x25A1;</span><span>&#x2715;</span></div></div>
+
+    <div class="strip">
+      <span class="chip"><span class="dot ok"></span><b>DELL AW2723DF</b> primary</span>
+      <span class="chip mono">2560&times;1440 &middot; 240 Hz</span>
+      <span class="chip"><span class="dot"></span>HDR <b>off</b></span>
+      <span class="chip"><span class="dot ok"></span>Hotkeys <b>6 armed</b></span>
+    </div>
+
+    <div class="body">
+      <aside class="rail">
+        <div class="rail-head">Profiles <span class="count">6</span></div>
+        <div class="plist">
+          <div class="prow sel"><span><span class="name">Night ops</span><span class="sub">gamma 1.55 &middot; shadows +36</span></span><kbd>Ctrl Alt 1</kbd></div>
+          <div class="prow"><span><span class="name">Caves</span><span class="sub">gamma 1.80 &middot; contrast +12</span></span><kbd>Ctrl Alt 2</kbd></div>
+          <div class="prow"><span><span class="name">Movie</span><span class="sub">gamma 0.92 &middot; vibrance 50</span></span><kbd>Ctrl Alt 3</kbd></div>
+          <div class="prow"><span><span class="name">Daylight</span><span class="sub">neutral curve</span></span><kbd>Ctrl Alt 0</kbd></div>
+          <div class="prow"><span><span class="name">Sniper lanes</span><span class="sub">gamma 1.30 &middot; highlights -12</span></span><kbd>F9</kbd></div>
+          <div class="prow"><span><span class="name">Streaming</span><span class="sub">vibrance 78</span></span><kbd>F10</kbd></div>
+        </div>
+        <div class="rail-actions">
+          <div class="icon-row">
+            <span class="ibtn primary" title="Add"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></span><span class="ibtn" title="Duplicate"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="4" width="13" height="13" rx="2.5"/><path d="M4 8v9a3 3 0 0 0 3 3h9"/><path d="M14.5 8v5M12 10.5h5"/></svg></span><span class="ibtn danger" title="Delete"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6 6 18"/></svg></span>
+            <span class="ibtn" title="Import"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 9V6a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-3"/><path d="M21 12H9m0 0 4-4m-4 4 4 4"/></svg></span>
+            <span class="ibtn" title="Export"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 9V6a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-3"/><path d="M9 12h12m0 0-4-4m4 4-4 4"/></svg></span>
+          </div>
+          <span class="btn ghost">Settings</span>
+          <span class="btn">Restore monitor <span class="keys"><kbd>Ctrl</kbd><kbd>Alt</kbd><kbd>R</kbd></span></span>
+        </div>
+      </aside>
+
+      <div class="editor">
+        <div class="ed-head"><h2>Night ops</h2><span class="tag">Active</span></div>
+
+        <div style="display:flex;flex-direction:column;gap:12px;min-width:0">
+          <div class="group">
+            <div class="group-h">Profile</div>
+            <div class="frow"><label>Name</label><div class="input">Night ops</div></div>
+            <div class="two">
+              <div class="frow"><label>Hotkey</label><div class="input focus"><span class="keys"><kbd>Ctrl</kbd><kbd>Alt</kbd><kbd class="cap">1</kbd></span><span class="hint">listening&hellip; Esc to cancel</span></div></div>
+              <div class="frow"><label>Monitors</label><div class="input dropdown">All monitors <span class="chev"></span></div></div>
+            </div>
+          </div>
+
+          <div class="group">
+            <div class="group-h">Curve <span class="k">GDI gamma ramp</span></div>
+            <div class="srow"><label>Gamma</label>
+              <div class="slider-wrap"><div class="slider"><div class="track"></div><div class="ticks"></div><div class="origin" style="left:28%"></div><div class="fill" style="left:28%;width:22%"></div><div class="thumb" style="left:50%"></div></div><div class="scale"><span>0.30</span><span>1.00</span><span>2.80</span></div></div>
+              <div class="num"><span class="val">1.55</span><span class="spin"><i></i><i></i></span></div></div>
+            <div class="srow"><label>Brightness</label>
+              <div class="slider-wrap"><div class="slider"><div class="track"></div><div class="ticks"></div><div class="origin" style="left:50%"></div><div class="fill" style="left:50%;width:12%"></div><div class="thumb" style="left:62%"></div></div><div class="scale"><span>-100</span><span>0</span><span>+100</span></div></div>
+              <div class="num"><span class="val">+24</span><span class="spin"><i></i><i></i></span></div></div>
+            <div class="srow"><label>Contrast</label>
+              <div class="slider-wrap"><div class="slider"><div class="track"></div><div class="ticks"></div><div class="origin" style="left:50%"></div><div class="fill" style="left:50%;width:0"></div><div class="thumb" style="left:50%"></div></div><div class="scale"><span>-100</span><span>0</span><span>+100</span></div></div>
+              <div class="num"><span class="val">0</span><span class="spin"><i></i><i></i></span></div></div>
+            <div class="srow"><label>Shadows</label>
+              <div class="slider-wrap"><div class="slider"><div class="track"></div><div class="ticks"></div><div class="origin" style="left:50%"></div><div class="fill" style="left:50%;width:18%"></div><div class="thumb" style="left:68%"></div></div><div class="scale"><span>-100</span><span>0</span><span>+100</span></div></div>
+              <div class="num"><span class="val">+36</span><span class="spin"><i></i><i></i></span></div></div>
+            <div class="srow"><label>Highlights</label>
+              <div class="slider-wrap"><div class="slider"><div class="track"></div><div class="ticks"></div><div class="origin" style="left:50%"></div><div class="fill" style="left:44%;width:6%"></div><div class="thumb" style="left:44%"></div></div><div class="scale"><span>-100</span><span>0</span><span>+100</span></div></div>
+              <div class="num"><span class="val">-12</span><span class="spin"><i></i><i></i></span></div></div>
+          </div>
+
+          <div class="group">
+            <div class="group-h">Color <span class="k">NVIDIA only</span></div>
+            <div class="srow"><label>Vibrance</label>
+              <div class="slider-wrap"><div class="slider"><div class="track"></div><div class="ticks"></div><div class="origin" style="left:0"></div><div class="fill" style="left:0;width:40%"></div><div class="thumb" style="left:40%"></div></div><div class="scale"><span>50</span><span>75</span><span>100</span></div></div>
+              <div class="num"><span class="val">70</span><span class="spin"><i></i><i></i></span></div></div>
+            <div class="caption">Vibrance is set in the driver and survives alt-tab. Needs an NVIDIA GPU.</div>
+          </div>
+
+          <div class="caption warn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 9v4m0 4h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
+            Ctrl+Alt+1 is already used by "Caves". Pick a different combination.</div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="statusbar"><span class="ok">&#x25CF; applied 00:00:02 ago</span><span>hook: registered</span><span>guard: re-applied 0&times;</span><span class="sp"></span><span>profiles.json &middot; saved</span></div>
+  </div>
+</section>
+
+<section>
+  <h1>Settings dialog</h1>
+  <p class="note">Options grouped by what they do, each with a one-line explanation. Square toggles match the square slider thumbs. The pass-through option carries its anti-cheat flag inline.</p>
+  <div class="win dialog">
+    <div class="titlebar"><span class="logo"><i></i></span><b>SETTINGS</b><div class="caps"><span>&#x2715;</span></div></div>
+    <div class="dbody">
+      <div class="sgroup">
+        <div class="group-h">Startup</div>
+        <div class="toggle"><span><span class="t">Start with Windows</span><span class="d">Runs in the tray at sign-in</span></span><span class="sw on"></span></div>
+        <div class="toggle"><span><span class="t">Show window on launch</span><span class="d">Off means tray only</span></span><span class="sw"></span></div>
+      </div>
+      <div class="sgroup">
+        <div class="group-h">Behaviour</div>
+        <div class="toggle"><span><span class="t">Show profile name on hotkey</span><span class="d">1.5 s toast, bottom right</span></span><span class="sw on"></span></div>
+        <div class="toggle"><span><span class="t">Re-apply if Windows resets the curve</span><span class="d">Guards against fullscreen and driver resets</span></span><span class="sw on"></span></div>
+        <div class="toggle"><span><span class="t">Let hotkeys pass through to other apps<span class="flag">anti-cheat risk</span></span><span class="d">System-wide keyboard hook. Prefer Ctrl or Alt combos instead.</span></span><span class="sw"></span></div>
+      </div>
+      <div class="sgroup">
+        <div class="group-h">Restore monitor hotkey</div>
+        <div class="input" style="margin:4px 0 6px"><span class="keys"><kbd>Ctrl</kbd><kbd>Alt</kbd><kbd>R</kbd></span><span class="hint">click to change</span></div>
+      </div>
+      <div class="dfoot"><span class="btn ghost">Open profiles folder</span><span class="btn">Close</span></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h1>Hotkey toast</h1>
+  <div class="toast"><span class="logo"><i></i></span><span class="n">Night ops</span><span class="k">CTRL ALT 1 &middot; all monitors</span></div>
+</section>
+
+<section>
+  <h1>System</h1>
+  <div class="swatches" style="margin-bottom:14px">
+    <span class="sw-item"><i style="background:#0b0d10"></i>bg</span>
+    <span class="sw-item"><i style="background:#111417"></i>panel</span>
+    <span class="sw-item"><i style="background:#171b20"></i>surface</span>
+    <span class="sw-item"><i style="background:#1f242b"></i>raised</span>
+    <span class="sw-item"><i style="background:#343c47"></i>line</span>
+    <span class="sw-item"><i style="background:#e6eaef"></i>text</span>
+    <span class="sw-item"><i style="background:#8b95a3"></i>muted</span>
+    <span class="sw-item"><i style="background:#35d6f0"></i>accent</span>
+    <span class="sw-item"><i style="background:#f5b041"></i>warn</span>
+    <span class="sw-item"><i style="background:#ef5350"></i>danger</span>
+    <span class="sw-item"><i style="background:#5ad38a"></i>ok</span>
+  </div>
+  <div class="legend">
+    <div><b>Fonts</b>Segoe UI for labels, Consolas for every number and hotkey. Both ship with Windows 10 and 11, so the app needs no font files.</div>
+    <div><b>Shapes</b>4px radius, 1px lines, square diamond slider thumbs, square toggles. No glow except the 3px focus ring.</div>
+    <div><b>Icons</b>One family: 16px, 2px stroke, round caps. Add, Duplicate, Delete, Import, Export. Drawn with GDI+ lines in the port.</div>
+    <div><b>Status strip</b>Monitor, resolution, refresh, HDR and armed hotkeys. Reads from code that already exists.</div>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

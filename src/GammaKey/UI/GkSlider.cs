@@ -9,10 +9,13 @@ public sealed class GkSlider : Control
 
     public event EventHandler? ValueChanged;
 
+    public const int TrackRowHeight = 20;
+    public const int ScaleRowHeight = 16;
+
     public GkSlider()
     {
         SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.UserPaint | ControlStyles.ResizeRedraw | ControlStyles.Selectable, true);
-        Height = Theme.ControlHeight;
+        Height = TrackRowHeight + ScaleRowHeight + Theme.Space1;
         Width = 320;
         TabStop = true;
     }
@@ -36,7 +39,10 @@ public sealed class GkSlider : Control
     // Where "normal" sits so the fill can grow from it in both directions.
     public int Origin { get; set; }
 
-    private Rectangle TrackRect => new(Theme.SliderThumbSize / 2, (Height - Theme.SliderTrackHeight) / 2, Width - Theme.SliderThumbSize, Theme.SliderTrackHeight);
+    // Label text under the track for minimum, origin and maximum.
+    public Func<int, string>? ScaleFormatter { get; set; }
+
+    private Rectangle TrackRect => new(Theme.SliderThumbSize / 2, (TrackRowHeight - Theme.SliderTrackHeight) / 2, Width - Theme.SliderThumbSize, Theme.SliderTrackHeight);
 
     private int ValueToX(int v)
     {
@@ -56,43 +62,50 @@ public sealed class GkSlider : Control
     {
         var g = e.Graphics;
         g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-        g.Clear(Parent?.BackColor ?? Theme.Background);
+        g.Clear(Parent?.BackColor ?? Theme.Panel);
 
         var track = TrackRect;
-        using var trackBrush = new SolidBrush(Enabled ? Theme.Border : Theme.Disabled);
-        FillRounded(g, trackBrush, track, track.Height / 2);
+        using (var trackBrush = new SolidBrush(Theme.Raised)) Theme.FillRounded(g, trackBrush, track, track.Height / 2);
+
+        // Ten tick marks under the track, like a scale on a tool.
+        using (var tick = new Pen(Theme.LineStrong))
+            for (int i = 0; i <= 10; i++)
+            {
+                int tx = track.Left + (int)Math.Round(track.Width * i / 10.0);
+                g.DrawLine(tick, tx, track.Bottom + 2, tx, track.Bottom + 5);
+            }
 
         int originX = ValueToX(Math.Clamp(Origin, _minimum, _maximum));
         int valueX = ValueToX(_value);
         var fill = Rectangle.FromLTRB(Math.Min(originX, valueX), track.Top, Math.Max(originX, valueX), track.Bottom);
         if (fill.Width > 0)
         {
-            using var fillBrush = new SolidBrush(Enabled ? Theme.Accent : Theme.Disabled);
-            FillRounded(g, fillBrush, fill, track.Height / 2);
+            using var fillBrush = new SolidBrush(Enabled ? Theme.Accent : Theme.TextDim);
+            g.FillRectangle(fillBrush, fill);
         }
+        using (var originPen = new Pen(Theme.TextMuted)) g.DrawLine(originPen, originX, track.Top - 3, originX, track.Bottom + 3);
 
-        int thumb = Theme.SliderThumbSize;
-        var thumbRect = new Rectangle(valueX - thumb / 2, (Height - thumb) / 2, thumb, thumb);
-        using var thumbBrush = new SolidBrush(Enabled ? (_dragging ? Theme.AccentHover : Theme.TextPrimary) : Theme.Disabled);
-        g.FillEllipse(thumbBrush, thumbRect);
-        if (Focused && Enabled)
+        // Diamond thumb: a rotated square, white with an accent outline.
+        int half = Theme.SliderThumbSize / 2;
+        var thumbCentre = new PointF(valueX, track.Top + track.Height / 2f);
+        var diamond = new[]
         {
-            using var focus = new Pen(Theme.FocusRing, 2f);
-            g.DrawEllipse(focus, Rectangle.Inflate(thumbRect, 3, 3));
-        }
-    }
+            new PointF(thumbCentre.X, thumbCentre.Y - half),
+            new PointF(thumbCentre.X + half, thumbCentre.Y),
+            new PointF(thumbCentre.X, thumbCentre.Y + half),
+            new PointF(thumbCentre.X - half, thumbCentre.Y),
+        };
+        using (var thumbBrush = new SolidBrush(Enabled ? Theme.TextPrimary : Theme.TextDim)) g.FillPolygon(thumbBrush, diamond);
+        using (var outline = new Pen(Enabled ? (_dragging || Focused ? Theme.Accent : Theme.Background) : Theme.TextDim, 2f)) g.DrawPolygon(outline, diamond);
 
-    private static void FillRounded(Graphics g, Brush brush, Rectangle r, int radius)
-    {
-        if (r.Width <= 0 || r.Height <= 0) return;
-        using var path = new System.Drawing.Drawing2D.GraphicsPath();
-        int d = Math.Max(1, radius * 2);
-        path.AddArc(r.Left, r.Top, d, d, 180, 90);
-        path.AddArc(r.Right - d, r.Top, d, d, 270, 90);
-        path.AddArc(r.Right - d, r.Bottom - d, d, d, 0, 90);
-        path.AddArc(r.Left, r.Bottom - d, d, d, 90, 90);
-        path.CloseFigure();
-        g.FillPath(brush, path);
+        var formatter = ScaleFormatter ?? (v => Format.Signed(v, 0));
+        var scaleRect = new Rectangle(0, TrackRowHeight, Width, ScaleRowHeight);
+        var scaleColor = Enabled ? Theme.TextDim : Theme.Raised;
+        // An origin at the minimum (Vibrance) has no useful label of its own, so the middle value stands in.
+        int centreValue = Origin <= _minimum ? (_minimum + _maximum) / 2 : Math.Clamp(Origin, _minimum, _maximum);
+        TextRenderer.DrawText(g, formatter(_minimum), Theme.MonoSmall, scaleRect, scaleColor, TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
+        TextRenderer.DrawText(g, formatter(centreValue), Theme.MonoSmall, scaleRect, scaleColor, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
+        TextRenderer.DrawText(g, formatter(_maximum), Theme.MonoSmall, scaleRect, scaleColor, TextFormatFlags.Right | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
     }
 
     protected override void OnMouseDown(MouseEventArgs e)
