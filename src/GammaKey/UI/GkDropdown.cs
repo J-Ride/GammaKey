@@ -31,7 +31,7 @@ public sealed class GkDropdown : ComboBox
             using var bar = new SolidBrush(Theme.Accent);
             e.Graphics.FillRectangle(bar, e.Bounds.Left, e.Bounds.Top, 2, e.Bounds.Height);
         }
-        var text = new Rectangle(e.Bounds.Left + Theme.Scale(Theme.Space2, DeviceDpi), e.Bounds.Top, e.Bounds.Width - Theme.Scale(Theme.Space2, DeviceDpi),e.Bounds.Height);
+        var text = new Rectangle(e.Bounds.Left + Theme.Scale(Theme.Space2, DeviceDpi), e.Bounds.Top, e.Bounds.Width - Theme.Scale(Theme.Space2, DeviceDpi), e.Bounds.Height);
         TextRenderer.DrawText(e.Graphics, Items[e.Index]?.ToString(), Theme.Label, text, Enabled ? Theme.TextPrimary : Theme.TextDim, TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
     }
 
