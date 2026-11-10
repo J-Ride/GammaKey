@@ -18,6 +18,7 @@ public sealed class AppController : IDisposable
     private readonly System.Windows.Forms.Timer _guard = new() { Interval = GuardIntervalMs };
     private readonly Dictionary<int, string> _profileIdsByHotkeyId = new();
     private Baseline _baseline = new();
+    private readonly ActiveProfile _active = new();
 
     public string BaseDirectory { get; }
     public string LockPath => Path.Combine(BaseDirectory, "running.lock");
@@ -103,6 +104,8 @@ public sealed class AppController : IDisposable
     public ApplyResult ApplyProfile(Profile profile)
     {
         var result = Preview(profile.Values, profile.Target);
+        // A refused apply left the old picture on screen, so the old profile stays the active one.
+        if (result.Accepted) _active.Applied(profile.Id);
         ProfileApplied?.Invoke(profile, result.Note);
         return result;
     }
@@ -128,11 +131,14 @@ public sealed class AppController : IDisposable
         return result with { Note = combined };
     }
 
-    public void Reset()
+    public void Reset() => Restore("Reset to original");
+
+    private void Restore(string message)
     {
         Display.RestoreBaseline(_baseline);
         Vibrance.RestoreBaseline(_baseline);
-        ResetApplied?.Invoke("Reset to original");
+        _active.Cleared();
+        ResetApplied?.Invoke(message);
     }
 
     public void Save()
@@ -197,7 +203,10 @@ public sealed class AppController : IDisposable
         }
         if (!_profileIdsByHotkeyId.TryGetValue(id, out var profileId)) return;
         var profile = Settings.Profiles.FirstOrDefault(p => p.Id == profileId);
-        if (profile is not null) ApplyProfile(profile);
+        if (profile is null) return;
+        // Pressing the active profile's key again puts the original back, like the reset key.
+        if (_active.IsActive(profile.Id)) Restore("Restored");
+        else ApplyProfile(profile);
     }
 
     public void Dispose()
