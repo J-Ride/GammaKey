@@ -20,6 +20,9 @@ public sealed class SettingsForm : Form
     public SettingsForm(AppController controller)
     {
         _controller = controller;
+        // Setting AutoScaleMode or ClientSize on a live form runs the DPI scale pass at once, on
+        // an empty form. Suspend first so the pass runs once, over the whole tree, at ResumeLayout.
+        SuspendLayout();
         Text = "GammaKey settings";
         WindowChrome.Apply(this);
         FormBorderStyle = FormBorderStyle.FixedDialog;
@@ -33,6 +36,7 @@ public sealed class SettingsForm : Form
 
         BuildLayout();
         Theme.Apply(this);
+        ResumeLayout(true);
         LoadSettingsIntoControls();
 
         // The tray menu can toggle Start with Windows while this dialog is open.
