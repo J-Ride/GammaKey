@@ -74,7 +74,7 @@ public sealed class GkNumber : Control
         }
 
         var textRect = new Rectangle(0, 0, spin.Left, Height);
-        TextRenderer.DrawText(g, DisplayText, Theme.Mono, textRect, Enabled ? Theme.TextPrimary : Theme.TextDim, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
+        TextRenderer.DrawText(g, DisplayText, Theme.FontsFor(DeviceDpi).Mono, textRect, Enabled ? Theme.TextPrimary : Theme.TextDim, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
     }
 
     private int SpinAt(Point p)

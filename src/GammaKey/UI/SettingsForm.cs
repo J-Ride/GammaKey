@@ -6,6 +6,7 @@ namespace GammaKey.UI;
 
 public sealed class SettingsForm : Form
 {
+    private const int ContentWidth = 408;
     private readonly AppController _controller;
     private readonly GkToggle _startWithWindows = new() { Text = "Start with Windows", Description = "Runs in the tray at sign-in" };
     private readonly GkToggle _showWindowOnLaunch = new() { Text = "Show window on launch", Description = "Off means tray only" };
@@ -13,7 +14,8 @@ public sealed class SettingsForm : Form
     private readonly GkToggle _guard = new() { Text = "Re-apply if Windows resets the curve", Description = "Guards against fullscreen and driver resets" };
     private readonly GkToggle _passthrough = new() { Text = "Let hotkeys pass through to other apps", Description = "System-wide keyboard hook. Prefer Ctrl or Alt combos instead.", Flag = "ANTI-CHEAT RISK" };
     private readonly GkHotkeyBox _resetHotkeyBox = new();
-    private readonly Label _status = new() { AutoSize = true, ForeColor = Theme.Warning, MaximumSize = new Size(340, 0), Margin = new Padding(0, Theme.Space2, 0, 0) };
+    // Hidden while empty so the window does not keep a blank line under the buttons.
+    private readonly Label _status = new() { AutoSize = true, Visible = false, ForeColor = Theme.Warning, Margin = new Padding(0, Theme.Space2, 0, 0) };
     private readonly Action _onSettingsChanged;
     private bool _loading;
 
@@ -32,7 +34,10 @@ public sealed class SettingsForm : Form
         StartPosition = FormStartPosition.CenterParent;
         AutoScaleDimensions = new SizeF(96f, 96f);
         AutoScaleMode = AutoScaleMode.Dpi;
-        ClientSize = new Size(440, 500);
+        // The window wraps its content, so nothing is cut off at any DPI scale, including after
+        // a move to a monitor at another scale, and a status line that appears later still fits.
+        AutoSize = true;
+        AutoSizeMode = AutoSizeMode.GrowAndShrink;
 
         BuildLayout();
         Theme.Apply(this);
@@ -47,37 +52,33 @@ public sealed class SettingsForm : Form
 
     private void BuildLayout()
     {
-        var stack = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown, WrapContents = false, Padding = new Padding(Theme.Space4), BackColor = Theme.Background };
+        // Widths are logical and fixed; the stack and the window grow to fit the content.
+        var stack = new FlowLayoutPanel { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, FlowDirection = FlowDirection.TopDown, WrapContents = false, Padding = new Padding(Theme.Space4), Margin = Padding.Empty, BackColor = Theme.Background };
         Controls.Add(stack);
 
-        var startup = new GkGroup("Startup") { Margin = new Padding(0, 0, 0, Theme.Space3) };
+        var startup = new GkGroup("Startup") { Width = ContentWidth, Margin = new Padding(0, 0, 0, Theme.Space3) };
         AddToggles(startup, _startWithWindows, _showWindowOnLaunch);
         stack.Controls.Add(startup);
 
-        var behaviour = new GkGroup("Behaviour") { Margin = new Padding(0, 0, 0, Theme.Space3) };
+        var behaviour = new GkGroup("Behaviour") { Width = ContentWidth, Margin = new Padding(0, 0, 0, Theme.Space3) };
         AddToggles(behaviour, _showToast, _guard, _passthrough);
         stack.Controls.Add(behaviour);
 
-        var reset = new GkGroup("Restore monitor hotkey") { Margin = new Padding(0, 0, 0, Theme.Space3) };
+        var reset = new GkGroup("Restore monitor hotkey") { Width = ContentWidth, Margin = new Padding(0, 0, 0, Theme.Space3) };
         _resetHotkeyBox.Margin = new Padding(0, 2, 0, 4);
         reset.Content.Controls.Add(_resetHotkeyBox);
         stack.Controls.Add(reset);
 
-        var buttons = new FlowLayoutPanel { AutoSize = false, Height = Theme.ControlHeight, FlowDirection = FlowDirection.RightToLeft, Margin = Padding.Empty, BackColor = Theme.Background };
-        var close = new Button { Text = "Close", AutoSize = true, MinimumSize = new Size(72, Theme.ControlHeight), Margin = Padding.Empty, DialogResult = DialogResult.OK };
-        var openFolder = new Button { Text = "Open profiles folder", AutoSize = true, MinimumSize = new Size(72, Theme.ControlHeight), Margin = new Padding(0, 0, Theme.Space2, 0) };
+        var buttons = new FlowLayoutPanel { AutoSize = false, Width = ContentWidth, Height = Theme.ControlHeight, FlowDirection = FlowDirection.RightToLeft, Margin = Padding.Empty, BackColor = Theme.Background };
+        var close = new GkButton("Close") { Margin = Padding.Empty, DialogResult = DialogResult.OK };
+        var openFolder = new GkButton("Open profiles folder") { Margin = new Padding(0, 0, Theme.Space2, 0) };
         openFolder.Click += (_, _) => Process.Start(new ProcessStartInfo("explorer.exe", $"\"{_controller.BaseDirectory}\"") { UseShellExecute = true });
         buttons.Controls.Add(close);
         buttons.Controls.Add(openFolder);
         stack.Controls.Add(buttons);
 
-        // Groups stretch to the stack width; a TopDown FlowLayoutPanel does not do that itself.
-        // Layout, not Resize: Resize does not fire for the initial size.
-        stack.Layout += (_, _) =>
-        {
-            int w = stack.ClientSize.Width - stack.Padding.Horizontal;
-            foreach (Control c in stack.Controls) if (c is GkGroup || c == buttons) c.Width = w;
-        };
+        _status.MaximumSize = new Size(ContentWidth, 0);
+        _status.TextChanged += (_, _) => _status.Visible = _status.Text.Length > 0;
         stack.Controls.Add(_status);
         CancelButton = close;
 

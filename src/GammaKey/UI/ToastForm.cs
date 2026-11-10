@@ -26,8 +26,8 @@ public sealed class ToastForm : Form
         SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.UserPaint, true);
         // No AutoScaleMode on a borderless form, so every constant is scaled here by hand.
         using var g = CreateGraphics();
-        int titleW = TextRenderer.MeasureText(g, _title, Theme.Title, Size.Empty, TextFormatFlags.NoPadding).Width;
-        int detailW = TextRenderer.MeasureText(g, _detail, Theme.MonoSmall, Size.Empty, TextFormatFlags.NoPadding).Width;
+        int titleW = TextRenderer.MeasureText(g, _title, Theme.FontsFor(DeviceDpi).Title, Size.Empty, TextFormatFlags.NoPadding).Width;
+        int detailW = TextRenderer.MeasureText(g, _detail, Theme.FontsFor(DeviceDpi).MonoSmall, Size.Empty, TextFormatFlags.NoPadding).Width;
         ClientSize = new Size(S(Bar + Pad + Mark + Theme.Space3) + Math.Max(titleW, detailW) + S(Pad), S(BodyHeight));
         _timer.Tick += (_, _) => { _timer.Stop(); Close(); };
     }
@@ -72,8 +72,8 @@ public sealed class ToastForm : Form
             g.DrawEllipse(pen, mx + 5 * k, my + 5 * k, 10 * k, 10 * k);
         }
         int tx = mx + mark + S(Theme.Space3);
-        TextRenderer.DrawText(g, _title, Theme.Title, new Rectangle(tx, S(9), Width - tx - S(Pad), S(22)), Theme.TextPrimary, TextFormatFlags.Left | TextFormatFlags.NoPadding);
-        TextRenderer.DrawText(g, _detail, Theme.MonoSmall, new Rectangle(tx, S(32), Width - tx - S(Pad), S(16)), Theme.TextMuted, TextFormatFlags.Left | TextFormatFlags.NoPadding);
+        TextRenderer.DrawText(g, _title, Theme.FontsFor(DeviceDpi).Title, new Rectangle(tx, S(9), Width - tx - S(Pad), S(22)), Theme.TextPrimary, TextFormatFlags.Left | TextFormatFlags.NoPadding);
+        TextRenderer.DrawText(g, _detail, Theme.FontsFor(DeviceDpi).MonoSmall, new Rectangle(tx, S(32), Width - tx - S(Pad), S(16)), Theme.TextMuted, TextFormatFlags.Left | TextFormatFlags.NoPadding);
     }
 
     protected override void OnShown(EventArgs e)

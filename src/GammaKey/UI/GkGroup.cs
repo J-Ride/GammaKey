@@ -53,8 +53,8 @@ public sealed class GkGroup : Panel
         // Padding is scaled by the form's pass; the header band drawn here must match it.
         int S(int v) => Theme.Scale(v, DeviceDpi);
         var head = new Rectangle(S(Theme.Space3), S(Theme.Space2), Width - 2 * S(Theme.Space3), S(HeaderHeight) - S(Theme.Space2));
-        TextRenderer.DrawText(g, Title.ToUpperInvariant(), Theme.Eyebrow, head, Theme.TextMuted, TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
+        TextRenderer.DrawText(g, Title.ToUpperInvariant(), Theme.FontsFor(DeviceDpi).Eyebrow, head, Theme.TextMuted, TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
         if (Hint.Length > 0)
-            TextRenderer.DrawText(g, Hint, Theme.MonoSmall, head, Theme.TextDim, TextFormatFlags.Right | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
+            TextRenderer.DrawText(g, Hint, Theme.FontsFor(DeviceDpi).MonoSmall, head, Theme.TextDim, TextFormatFlags.Right | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
     }
 }

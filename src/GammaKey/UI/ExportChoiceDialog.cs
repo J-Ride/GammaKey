@@ -21,29 +21,27 @@ public sealed class ExportChoiceDialog : Form
         StartPosition = FormStartPosition.CenterParent;
         AutoScaleDimensions = new SizeF(96f, 96f);
         AutoScaleMode = AutoScaleMode.Dpi;
-        ClientSize = new Size(420, 120);
+        // The window wraps its content, so the buttons stay in view at any DPI scale.
+        AutoSize = true;
+        AutoSizeMode = AutoSizeMode.GrowAndShrink;
 
-        var stack = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown, WrapContents = false, Padding = new Padding(Theme.Space4), BackColor = Theme.Background };
+        var stack = new FlowLayoutPanel { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, FlowDirection = FlowDirection.TopDown, WrapContents = false, Padding = new Padding(Theme.Space4), Margin = Padding.Empty, BackColor = Theme.Background };
         Controls.Add(stack);
         stack.Controls.Add(new Label { Text = "What do you want to export?", AutoSize = true, Font = Theme.Label, ForeColor = Theme.TextPrimary, Margin = new Padding(0, 0, 0, Theme.Space4) });
 
-        var buttons = new FlowLayoutPanel { AutoSize = false, Height = Theme.ControlHeight, FlowDirection = FlowDirection.RightToLeft, Margin = Padding.Empty, BackColor = Theme.Background };
-        var selected = new Button { Text = "This profile only", AutoSize = true, MinimumSize = new Size(72, Theme.ControlHeight), Margin = Padding.Empty, Enabled = hasSelection };
-        var all = new Button { Text = "All profiles", AutoSize = true, MinimumSize = new Size(72, Theme.ControlHeight), Margin = new Padding(0, 0, Theme.Space2, 0) };
+        var buttons = new FlowLayoutPanel { AutoSize = false, Width = 388, Height = Theme.ControlHeight, FlowDirection = FlowDirection.RightToLeft, Margin = Padding.Empty, BackColor = Theme.Background };
+        var selected = new GkButton("This profile only") { IsPrimary = hasSelection, Margin = Padding.Empty, Enabled = hasSelection };
+        var all = new GkButton("All profiles") { IsPrimary = !hasSelection, Margin = new Padding(0, 0, Theme.Space2, 0) };
         selected.Click += (_, _) => { _choice = ExportScope.Selected; DialogResult = DialogResult.OK; };
         all.Click += (_, _) => { _choice = ExportScope.All; DialogResult = DialogResult.OK; };
         buttons.Controls.Add(selected);
         buttons.Controls.Add(all);
         stack.Controls.Add(buttons);
-        stack.Layout += (_, _) => buttons.Width = stack.ClientSize.Width - stack.Padding.Horizontal;
 
         // The single export is the default when a profile is selected; otherwise All is.
         AcceptButton = hasSelection ? selected : all;
         Theme.Apply(this);
-        Theme.StylePrimary(hasSelection ? selected : all);
         ResumeLayout(true);
-        // The height follows the content so the buttons stay reachable at any DPI scale.
-        ClientSize = new Size(ClientSize.Width, buttons.Bottom + stack.Padding.Bottom);
     }
 
     protected override void OnKeyDown(KeyEventArgs e)

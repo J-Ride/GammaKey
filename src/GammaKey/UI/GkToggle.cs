@@ -56,22 +56,22 @@ public sealed class GkToggle : Control
 
         int textRight = sw.Left - S(Theme.Space3);
         bool hasFlag = !string.IsNullOrEmpty(Flag);
-        var flagSize = hasFlag ? TextRenderer.MeasureText(g, Flag, Theme.MonoSmall, Size.Empty, TextFormatFlags.NoPadding) : Size.Empty;
+        var flagSize = hasFlag ? TextRenderer.MeasureText(g, Flag, Theme.FontsFor(DeviceDpi).MonoSmall, Size.Empty, TextFormatFlags.NoPadding) : Size.Empty;
         int flagWidth = hasFlag ? flagSize.Width + S(10) : 0;
         int titleMax = Math.Max(0, hasFlag ? textRight - flagWidth - S(Theme.Space2) : textRight);
-        var titleSize = TextRenderer.MeasureText(g, Text, Theme.Label, new Size(titleMax, Height), TextFormatFlags.NoPadding | TextFormatFlags.EndEllipsis);
+        var titleSize = TextRenderer.MeasureText(g, Text, Theme.FontsFor(DeviceDpi).Label, new Size(titleMax, Height), TextFormatFlags.NoPadding | TextFormatFlags.EndEllipsis);
         var titleRect = new Rectangle(0, S(Theme.Space1), titleMax, titleSize.Height);
-        TextRenderer.DrawText(g, Text, Theme.Label, titleRect, Enabled ? Theme.TextPrimary : Theme.TextDim, TextFormatFlags.Left | TextFormatFlags.NoPadding | TextFormatFlags.EndEllipsis);
+        TextRenderer.DrawText(g, Text, Theme.FontsFor(DeviceDpi).Label, titleRect, Enabled ? Theme.TextPrimary : Theme.TextDim, TextFormatFlags.Left | TextFormatFlags.NoPadding | TextFormatFlags.EndEllipsis);
         if (hasFlag)
         {
             int flagLeft = Math.Min(titleSize.Width + S(Theme.Space2), textRight - flagWidth);
             var flagRect = new Rectangle(flagLeft, titleRect.Top + 1, flagWidth, flagSize.Height + S(3));
             using var fp = new Pen(Color.FromArgb(115, Theme.Warning));
             Theme.DrawRounded(g, fp, flagRect, 3);
-            TextRenderer.DrawText(g, Flag, Theme.MonoSmall, flagRect, Theme.Warning, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
+            TextRenderer.DrawText(g, Flag, Theme.FontsFor(DeviceDpi).MonoSmall, flagRect, Theme.Warning, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
         }
         var descRect = new Rectangle(0, titleRect.Bottom + 1, textRight, Height - titleRect.Bottom - 1);
-        TextRenderer.DrawText(g, Description, Theme.Caption, descRect, Theme.TextDim, TextFormatFlags.Left | TextFormatFlags.NoPadding | TextFormatFlags.EndEllipsis);
+        TextRenderer.DrawText(g, Description, Theme.FontsFor(DeviceDpi).Caption, descRect, Theme.TextDim, TextFormatFlags.Left | TextFormatFlags.NoPadding | TextFormatFlags.EndEllipsis);
     }
 
     protected override void OnMouseEnter(EventArgs e) { _hover = true; Invalidate(); base.OnMouseEnter(e); }

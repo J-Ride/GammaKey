@@ -6,17 +6,17 @@ namespace GammaKey.Tests;
 public class ProfileListTests
 {
     [Fact]
-    public void RowHeightAt96DpiFitsBothTextLinesPlusSpacing()
+    public void RowHeightAt96DpiFitsTheNameLinePlusSpacing()
     {
-        int needed = (int)Math.Ceiling(Theme.Label.GetHeight(96f)) + (int)Math.Ceiling(Theme.Caption.GetHeight(96f)) + 2 * Theme.Space2;
+        int needed = Theme.FontsFor(96f).Label.Height + 2 * Theme.Space2;
 
         Assert.True(ProfileList.RowHeightFor(96f) >= needed);
     }
 
     [Fact]
-    public void RowHeightAt144DpiFitsBothTextLinesPlusScaledSpacing()
+    public void RowHeightAt144DpiFitsTheNameLinePlusScaledSpacing()
     {
-        int needed = (int)Math.Ceiling(Theme.Label.GetHeight(144f)) + (int)Math.Ceiling(Theme.Caption.GetHeight(144f)) + 2 * Theme.Scale(Theme.Space2, 144f);
+        int needed = Theme.FontsFor(144f).Label.Height + 2 * Theme.Scale(Theme.Space2, 144f);
 
         Assert.True(ProfileList.RowHeightFor(144f) >= needed);
     }

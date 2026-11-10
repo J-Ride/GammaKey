@@ -32,7 +32,7 @@ public sealed class GkDropdown : ComboBox
             e.Graphics.FillRectangle(bar, e.Bounds.Left, e.Bounds.Top, 2, e.Bounds.Height);
         }
         var text = new Rectangle(e.Bounds.Left + Theme.Scale(Theme.Space2, DeviceDpi), e.Bounds.Top, e.Bounds.Width - Theme.Scale(Theme.Space2, DeviceDpi), e.Bounds.Height);
-        TextRenderer.DrawText(e.Graphics, Items[e.Index]?.ToString(), Theme.Label, text, Enabled ? Theme.TextPrimary : Theme.TextDim, TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
+        TextRenderer.DrawText(e.Graphics, Items[e.Index]?.ToString(), Theme.FontsFor(DeviceDpi).Label, text, Enabled ? Theme.TextPrimary : Theme.TextDim, TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
     }
 
     // The closed box is painted by the system after OnDrawItem, so repaint its border and arrow

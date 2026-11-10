@@ -28,14 +28,17 @@ public sealed class GkChip : Control
         FitWidth();
     }
 
+    // DeviceDpi is still the old value during the scale pass, so measure again afterwards.
+    protected override void OnDpiChangedAfterParent(EventArgs e) { base.OnDpiChangedAfterParent(e); FitWidth(); }
+
     private void FitWidth()
     {
         using var g = CreateGraphics();
         int S(int v) => Theme.Scale(v, DeviceDpi);
         int w = S(Theme.Space2) * 2;
         if (_dot != DotState.None) w += S(DotSize) + S(Theme.Space2);
-        if (_label.Length > 0) w += TextRenderer.MeasureText(g, _label, Theme.Caption, Size.Empty, TextFormatFlags.NoPadding).Width + (_value.Length > 0 ? S(Theme.Space1) : 0);
-        if (_value.Length > 0) w += TextRenderer.MeasureText(g, _value, Theme.Mono, Size.Empty, TextFormatFlags.NoPadding).Width;
+        if (_label.Length > 0) w += TextRenderer.MeasureText(g, _label, Theme.FontsFor(DeviceDpi).Caption, Size.Empty, TextFormatFlags.NoPadding).Width + (_value.Length > 0 ? S(Theme.Space1) : 0);
+        if (_value.Length > 0) w += TextRenderer.MeasureText(g, _value, Theme.FontsFor(DeviceDpi).Mono, Size.Empty, TextFormatFlags.NoPadding).Width;
         Width = w;
         Invalidate();
     }
@@ -59,11 +62,11 @@ public sealed class GkChip : Control
         }
         if (_label.Length > 0)
         {
-            var size = TextRenderer.MeasureText(g, _label, Theme.Caption, Size.Empty, TextFormatFlags.NoPadding);
-            TextRenderer.DrawText(g, _label, Theme.Caption, new Rectangle(x, 0, size.Width, Height), Theme.TextMuted, TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
+            var size = TextRenderer.MeasureText(g, _label, Theme.FontsFor(DeviceDpi).Caption, Size.Empty, TextFormatFlags.NoPadding);
+            TextRenderer.DrawText(g, _label, Theme.FontsFor(DeviceDpi).Caption, new Rectangle(x, 0, size.Width, Height), Theme.TextMuted, TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
             x += size.Width + S(Theme.Space1);
         }
         if (_value.Length > 0)
-            TextRenderer.DrawText(g, _value, Theme.Mono, new Rectangle(x, 0, Width - x, Height), Theme.TextPrimary, TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
+            TextRenderer.DrawText(g, _value, Theme.FontsFor(DeviceDpi).Mono, new Rectangle(x, 0, Width - x, Height), Theme.TextPrimary, TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
     }
 }

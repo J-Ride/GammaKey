@@ -6,7 +6,8 @@ public enum UnsavedChoice { SaveAndApply, Discard }
 // user is never left in a dead end. Escape and the close box count as Discard changes.
 public sealed class UnsavedChangesDialog : Form
 {
-    private readonly Label _message = new() { AutoSize = true, UseMnemonic = false, Font = Theme.Label, ForeColor = Theme.TextPrimary, Margin = new Padding(0, 0, 0, Theme.Space4), MaximumSize = new Size(380, 0) };
+    private const int ContentWidth = 388;
+    private readonly Label _message = new() { AutoSize = true, UseMnemonic = false, Font = Theme.Label, ForeColor = Theme.TextPrimary, Margin = new Padding(0, 0, 0, Theme.Space4), MaximumSize = new Size(ContentWidth, 0) };
 
     public UnsavedChangesDialog(string profileName)
     {
@@ -22,29 +23,27 @@ public sealed class UnsavedChangesDialog : Form
         StartPosition = FormStartPosition.CenterParent;
         AutoScaleDimensions = new SizeF(96f, 96f);
         AutoScaleMode = AutoScaleMode.Dpi;
-        ClientSize = new Size(420, 120);
+        // The window wraps its content, so a long wrapped name and a move to a monitor at
+        // another scale both keep the buttons in view.
+        AutoSize = true;
+        AutoSizeMode = AutoSizeMode.GrowAndShrink;
         _message.Text = $"{profileName} has unsaved changes.";
 
-        var stack = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown, WrapContents = false, Padding = new Padding(Theme.Space4), BackColor = Theme.Background };
+        var stack = new FlowLayoutPanel { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, FlowDirection = FlowDirection.TopDown, WrapContents = false, Padding = new Padding(Theme.Space4), Margin = Padding.Empty, BackColor = Theme.Background };
         Controls.Add(stack);
         stack.Controls.Add(_message);
 
-        var buttons = new FlowLayoutPanel { AutoSize = false, Height = Theme.ControlHeight, FlowDirection = FlowDirection.RightToLeft, Margin = Padding.Empty, BackColor = Theme.Background };
-        var save = new Button { Text = "Save and Apply", AutoSize = true, MinimumSize = new Size(72, Theme.ControlHeight), Margin = Padding.Empty, DialogResult = DialogResult.OK };
-        var discard = new Button { Text = "Discard changes", AutoSize = true, MinimumSize = new Size(72, Theme.ControlHeight), Margin = new Padding(0, 0, Theme.Space2, 0), DialogResult = DialogResult.Cancel };
+        var buttons = new FlowLayoutPanel { AutoSize = false, Width = ContentWidth, Height = Theme.ControlHeight, FlowDirection = FlowDirection.RightToLeft, Margin = Padding.Empty, BackColor = Theme.Background };
+        var save = new GkButton("Save and Apply") { IsPrimary = true, Margin = Padding.Empty, DialogResult = DialogResult.OK };
+        var discard = new GkButton("Discard changes") { Margin = new Padding(0, 0, Theme.Space2, 0), DialogResult = DialogResult.Cancel };
         buttons.Controls.Add(save);
         buttons.Controls.Add(discard);
         stack.Controls.Add(buttons);
-        // The button row stretches to the stack width; a TopDown FlowLayoutPanel does not do that itself.
-        stack.Layout += (_, _) => buttons.Width = stack.ClientSize.Width - stack.Padding.Horizontal;
 
         AcceptButton = save;
         CancelButton = discard;
         Theme.Apply(this);
-        Theme.StylePrimary(save);
         ResumeLayout(true);
-        // The height follows the wrapped message so the buttons stay reachable for a long name.
-        ClientSize = new Size(ClientSize.Width, buttons.Bottom + stack.Padding.Bottom);
     }
 
     public string Message => _message.Text;
