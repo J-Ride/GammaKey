@@ -1,133 +1,148 @@
 ﻿# GammaKey
 
-Switch your monitor's gamma, brightness, contrast, shadows, highlights, colour balance and NVIDIA
-vibrance with a hotkey. Made for Escape from Tarkov's dark corners, works anywhere on the desktop.
+Hotkey profiles for your monitor's picture on Windows. Save gamma, brightness, contrast, shadows,
+highlights, colour balance and NVIDIA vibrance as named profiles and switch between them with a
+key, in-game or on the desktop. Lives in the tray, needs no install and no admin rights.
+
+No opening the driver control panel, no fiddling with the monitor's buttons, no lost settings. Allows you 
+to save presets for all in game lighting conditions, editing programs, or general monitor adjustment profiles. 
 
 ![Main window](docs/screenshots/main-window.png)
-
-## What it does
-
-- **Profiles.** Each profile holds a full set of picture values, a hotkey and a monitor target
-  (primary, all, or one named monitor). Press the hotkey anywhere and the picture changes.
-- **Press again to restore.** Pressing the hotkey of the profile that is already active puts the
-  original picture back. A separate **Restore monitor** hotkey does the same from any state.
-- **Lives in the tray.** Closing the window hides it by the clock. Right-click the icon for the
-  profile list, Restore, Start with Windows and Quit.
-- **Share profiles.** Export one profile or all of them to a JSON file. Import a file from a friend.
-- **Safe by design.** The original picture is saved when the app starts and put back when you
-  restore, quit, or start again after a crash.
-
-## Requirements
-
-- Windows 10 or 11, 64-bit.
-- Nothing else to install. The download is a single self-contained exe (about 70 MB) that
-  carries its own .NET runtime.
-- An NVIDIA graphics card for the **Vibrance** slider. On AMD and Intel cards that slider is
-  greyed out and everything else works.
-- No administrator rights.
-
-## Install and run
-
-1. Download `GammaKey.exe` from the [latest release](https://github.com/J-Ride/GammaKey/releases/latest).
-2. Put it in its own folder. It saves its files beside itself (see Files below).
-3. Double-click it. Windows SmartScreen may warn because the exe is unsigned: click **More info**,
-   then **Run anyway**.
-4. An icon appears by the clock. Left-click it to open the window.
-
-Only one copy runs at a time. Starting a second one shows a note and quits.
-
-## Using it
-
-### The window
-
-- **Left rail:** the profile list with each profile's hotkey. Below it: add, duplicate, delete,
-  import and export buttons, then **Settings** and **Restore monitor**.
-- **Top strip:** the primary monitor, its resolution and refresh rate, whether HDR is on, and how
-  many hotkeys are armed.
-- **Editor:** the selected profile's name, hotkey and monitor target, then the sliders.
-
-### Make a profile
-
-1. Click **+** to add a profile, or pick one of the three starter profiles (Dark Room, Bright
-   Outdoors, Normal).
-2. Drag the sliders. The screen changes as you drag so you can see the result.
-3. Click the **Hotkey** box and press your key combination. Backspace clears it.
-4. Choose which **Monitors** the profile targets.
-5. Click **Apply** to save. **Revert** throws the edits away and reloads the saved profile.
-
-Selecting a profile in the list applies it to the screen. If you move to another profile with
-unsaved edits, a dialog asks whether to save them or discard them.
-
-### Sliders
-
-| Group | Sliders | Range |
-|---|---|---|
-| Curve | Gamma | 0.30 to 2.80 (1.00 is normal) |
-| Curve | Brightness, Contrast, Shadows, Highlights | -100 to +100 |
-| Balance | Warm/cool, Red, Green, Blue | -100 to +100 |
-| Balance | Black floor | 0 to 100 |
-| Color | Vibrance (NVIDIA only) | 50 to 100 (50 is normal) |
-
-Curve and Balance change the colour table the graphics card applies to the whole screen. Vibrance
-is set in the NVIDIA driver and survives alt-tab.
-
-If you push the sliders to an extreme, Windows may refuse the curve. The status line then says
-"Windows refused this curve, reduce the sliders" and the previous picture stays.
-
-### Hotkeys
-
-- Hotkeys are global. They work in games and on the desktop while GammaKey runs.
-- Set a **Restore monitor** hotkey in Settings so you can always get back to normal.
-- A hotkey without Ctrl, Alt or Shift swallows its key, so a profile on `F9` stops `F9` reaching
-  other apps. Use a modifier, or turn on pass-through (see Settings).
-- If another program already owns a combination, the hotkey box shows "in use by another app"
-  and the status line says "Hotkey already used by another app" with the profile names.
-
-### Settings
-
-| Setting | What it does |
-|---|---|
-| Start with Windows | Runs in the tray at sign-in. Adds a Run entry for the current user that points at the exe, so if you move the exe, turn this off and on again. |
-| Show window on launch | Off means tray only. |
-| Show profile name on hotkey | A short toast at the bottom right when a hotkey fires. |
-| Re-apply if Windows resets the curve | Every 3 seconds, checks that the active curve is still on screen and puts it back if a game or the driver cleared it. On by default. |
-| Let hotkeys pass through to other apps | Uses a system-wide keyboard hook instead of Windows hotkeys, so the key also reaches the game. See the anti-cheat warning under Games. |
-| Restore monitor hotkey | The key that puts the original picture back. |
-| Open profiles folder | Opens the folder that holds the exe and its files. |
-
-## Files
-
-Everything is saved beside `GammaKey.exe`. Nothing is written anywhere else except the optional
-Start with Windows entry in the registry.
-
-| File | Purpose |
-|---|---|
-| `profiles.json` | Your profiles and settings. Plain JSON, safe to copy to another PC. Written to a temp file first, then swapped in, so a crash cannot leave it half written. |
-| `profiles.json.corrupt` | Made only if `profiles.json` could not be read. Your old file is kept here and the app starts with the defaults. |
-| `baseline.json` | The monitor's original colour table and vibrance, captured at start. |
-| `running.lock` | Exists while the app runs. If it is still there at the next start, the last run died with a curve on screen, so the saved baseline is restored first. |
-
-Export writes the same JSON shape as `profiles.json`, so a copied `profiles.json` and an exported
-file both import. Imported profiles whose hotkey is already taken arrive with the hotkey cleared.
 
 ## How it works, and why it is safe
 
 GammaKey changes the colour curve your graphics card applies to the whole screen, the same control
 the NVIDIA Control Panel's "Adjust desktop color settings" page uses. It talks only to Windows and
 the graphics driver. It never opens, reads, hooks or injects anything into a game. The one
-exception is the optional pass-through setting, which installs a system-wide keyboard hook; see
-Games.
+exception is the optional pass-through setting, which installs a system-wide keyboard hook (see
+Games and anti-cheat section below.)
 
-## Games
+## What it's good for
 
-Run games in borderless windowed mode. In exclusive fullscreen many games write their own gamma
-curve when they gain focus, which overwrites GammaKey until the next hotkey press or the next
+- **Dark games.** A profile that lifts the shadows for night maps and caves, a profile that puts
+  the picture back, and a hotkey for each. Works in borderless windowed games without touching the
+  game's own settings.
+- **Day and night.** Cooler and brighter for daytime, warmer and dimmer in the evening.
+- **Photo and video editing.** A neutral profile with nothing exaggerated when you're editing,
+  your normal picture when you're not.
+- **Shared PCs.** Everyone gets a profile instead of fighting over the monitor's buttons.
+- **Multiple monitors.** A profile can target the primary monitor, all of them, or one by name.
+
+## Install
+
+1. Download `GammaKey.exe` from the [latest release](https://github.com/J-Ride/GammaKey/releases/latest).
+2. Put it in its own folder. It writes its settings file next to itself.
+3. Run it. SmartScreen will probably complain because the exe is unsigned. Click **More info**,
+   then **Run anyway**.
+
+**The tool opens to the tray by default so look in your system tray after starting it**
+
+That's it. There is nothing else to install: the exe is self-contained and carries its own .NET 
+runtime.
+
+## Requirements
+
+- Windows 10 or 11, 64-bit.
+- An NVIDIA graphics card for the **Vibrance** slider. On AMD and Intel cards that slider is
+  greyed out for now and everything else works.
+
+## Usage
+
+### Your first profile
+
+1. Click **+** in the left rail, or pick one of the three starter profiles (Dark Room, Bright
+   Outdoors, Normal).
+2. Drag the sliders. The screen updates as you drag.
+3. Click the **Hotkey** box and press a key combination. Backspace clears it.
+4. Pick which **Monitors** the profile applies to.
+5. Click **Apply** to save. **Revert** drops your edits and reloads the saved profile.
+
+Then go to **Settings** and set a **Restore monitor** hotkey. That key always puts the original
+picture back, whatever state you're in.
+
+### Hotkeys
+
+- Hotkeys are global. They work in any app while GammaKey is running.
+- Pressing the hotkey of the profile that's already active restores the original picture, so one
+  key can toggle.
+- A hotkey with no Ctrl, Alt or Shift swallows its key: a profile on `F9` means `F9` no longer
+  reaches other apps. Use a modifier, or turn on pass-through in Settings (read the anti-cheat
+  note first).
+- If another program already owns the combination, the hotkey box says "in use by another app"
+  and the status line names the profile.
+
+### The window
+
+- **Left rail:** the profile list with each profile's hotkey. Under it: add, duplicate, delete,
+  import, export, then **Settings** and **Restore monitor**.
+- **Top strip:** the primary monitor, its resolution and refresh rate, whether HDR is on, and how
+  many hotkeys are armed.
+- **Editor:** name, hotkey, monitor target, then the sliders.
+
+Selecting a profile in the list applies it. If you switch profiles with unsaved edits, a dialog
+asks whether to save or discard them. Closing the window hides it to the tray; **Quit** is in the
+tray menu.
+
+### Sliders
+
+| Group | Slider | Range |
+|---|---|---|
+| Curve | Gamma | 0.30 to 2.80, 1.00 is normal |
+| Curve | Brightness, Contrast, Shadows, Highlights | -100 to +100 |
+| Balance | Warm/cool, Red, Green, Blue | -100 to +100 |
+| Balance | Black floor | 0 to 100 |
+| Color | Vibrance (NVIDIA only) | 50 to 100, 50 is normal |
+
+Curve and Balance change the colour table the graphics card applies to the whole screen. Vibrance
+is set in the NVIDIA driver and survives alt-tab.
+
+If you push the sliders far enough, Windows refuses the curve. The status line says "Windows
+refused this curve, reduce the sliders" and the previous picture stays.
+
+### Tray menu
+
+Right-click the icon for the profile list, **Reset**, **Open GammaKey**, **Start with Windows**
+and **Quit**.
+
+### Settings
+
+| Setting | What it does |
+|---|---|
+| Start with Windows | Runs in the tray at sign-in. This is a Run entry for your user that points at the exe, so if you move the exe, turn it off and on again. |
+| Show window on launch | Off means tray only. |
+| Show profile name on hotkey | A short toast at the bottom right when a hotkey fires. |
+| Re-apply if Windows resets the curve | Every 3 seconds, checks the active curve is still on screen and puts it back if a game or the driver cleared it. On by default. |
+| Let hotkeys pass through to other apps | Uses a system-wide keyboard hook instead of Windows hotkeys, so the key also reaches the game. See the anti-cheat note. |
+| Restore monitor hotkey | The key that puts the original picture back. |
+| Open profiles folder | Opens the folder the exe lives in. |
+
+## Games and anti-cheat
+
+**Run games in borderless windowed mode.** In exclusive fullscreen a lot of games write their own
+gamma curve when they get focus, which overwrites GammaKey until the next hotkey press or the next
 guard check.
 
-**Anti-cheat.** The pass-through setting uses a system-wide keyboard hook. Some anti-cheat systems
-flag that. The safer choice is to leave it off and use a Ctrl, Alt or Shift modifier on your
-hotkeys. Pass-through also does not see keys sent by macro software or a Stream Deck, and gets
-nothing while an elevated (admin) window has focus.
+**Anti-cheat.**: GammaKey talks to Windows and the graphics driver only. It does not open, read, hook or inject
+anything into a game. The one exception is the optional pass-through setting, which installs a
+system-wide keyboard hook. Some anti-cheat systems flag that. If you play anything with anti-cheat,
+leave pass-through off and use a modifier on your hotkeys instead. Pass-through also doesn't see
+keys from macro software or a Stream Deck, and gets nothing while an admin window has focus.
+
+## Files
+
+Everything lives next to `GammaKey.exe`. The only thing written anywhere else is the optional
+Start with Windows registry entry.
+
+| File | Purpose |
+|---|---|
+| `profiles.json` | Your profiles and settings. Plain JSON. Copy it to another PC or send it to a friend. Written to a temp file and swapped in, so a crash can't leave it half written. |
+| `profiles.json.corrupt` | Only appears if `profiles.json` couldn't be read. Your old file is kept here and the app starts with defaults. |
+| `baseline.json` | The monitor's original colour table and vibrance, captured at start. |
+| `running.lock` | Exists while the app runs. If it's still there at the next start, the last run died with a curve on screen, so the saved baseline is restored first. |
+
+Export writes the same JSON shape as `profiles.json`, one profile or all of them, so an exported
+file and a copied `profiles.json` both import. Imported profiles whose hotkey is already taken
+arrive with the hotkey cleared.
 
 ## Notes
 
@@ -141,8 +156,15 @@ nothing while an elevated (admin) window has focus.
 
 Needs the .NET 8 SDK.
 
-    dotnet build
-    dotnet test
-    .\publish.ps1
+```
+dotnet build
+dotnet test
+.\publish.ps1
+```
 
 `publish.ps1` runs the tests, then builds the single self-contained exe into `publish\GammaKey.exe`.
+
+## License
+
+MIT.
+
