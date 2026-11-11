@@ -26,3 +26,12 @@ bin/
 obj/
 publish/
 *.user
+
+# Local tooling and working documents, not part of the public repo
+CLAUDE.md
+.claude/
+_bmad/
+.graphifyignore
+docs/README.md
+docs/superpowers/
+docs/mockups/
