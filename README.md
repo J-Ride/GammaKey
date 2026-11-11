@@ -7,7 +7,7 @@ key, in-game or on the desktop. Lives in the tray, needs no install and no admin
 No opening the driver control panel, no fiddling with the monitor's buttons, no lost settings. Allows you 
 to save presets for all in game lighting conditions, editing programs, or general monitor adjustment profiles. 
 
-![Main window](docs/screenshots/main-window.png)
+![Main window](docs/screenshots/GammaKey.png)
 
 ## How it works, and why it is safe
 
