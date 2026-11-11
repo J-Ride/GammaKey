@@ -1,8 +1,0 @@
-# Workspace override for bmad-code-review.
-# Policy 2026-07-22: review findings that need Jordan's decision arrive in plain English.
-
-[workflow]
-persistent_facts = [
-  "HARD RULE - how to talk to Jordan (policy 2026-07-22): he is not a software engineer. When a review finding is triaged as a DECISION (needs his input), present it in brief plain English: no jargon, no acronyms, no file paths or code identifiers unless he asks. If a technical term is unavoidable, define it in the same sentence in everyday words.",
-  "HARD RULE - decision format for Jordan: (1) WHAT the finding means in one or two plain sentences, including what could go wrong for the business if ignored, (2) each option on its own line as: name - what it is, why you would pick it, what it costs or risks, (3) end with 'My recommendation:' and one sentence of why. This governs the conversation only; the written review record stays fully technical and citable.",
-]
