@@ -1,4 +1,4 @@
-﻿# GammaKey
+# GammaKey
 
 Hotkey profiles for your monitor's picture on Windows. Save gamma, brightness, contrast, shadows,
 highlights, colour balance and NVIDIA vibrance as named profiles and switch between them with a
@@ -89,9 +89,17 @@ tray menu.
 |---|---|---|
 | Curve | Gamma | 0.30 to 2.80, 1.00 is normal |
 | Curve | Brightness, Contrast, Shadows, Highlights | -100 to +100 |
+| Curve | Shadow pivot, Highlight pivot | 0 to 100, 50 is normal |
+| Curve | Black floor | 0 to 100 |
 | Balance | Warm/cool, Red, Green, Blue | -100 to +100 |
-| Balance | Black floor | 0 to 100 |
 | Color | Vibrance (NVIDIA only) | 50 to 100, 50 is normal |
+
+Shadows lifts or crushes everything darker than its pivot; Highlights dims or boosts everything
+brighter than its pivot. Move a pivot to change how much of the picture its slider touches: a
+Shadow pivot at 25 lifts only the darkest quarter, a Highlight pivot at 0 scales the whole
+picture down, which caps how white white can be. Black floor sets the darkest level the screen
+shows. Windows refuses a table whose white falls below half, which is where Highlights -100 with
+the pivot at 0 lands.
 
 Curve and Balance change the colour table the graphics card applies to the whole screen. Vibrance
 is set in the NVIDIA driver and survives alt-tab.
