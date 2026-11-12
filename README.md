@@ -170,8 +170,6 @@ arrive with the hotkey cleared.
 
 ## Notes
 
-- **Mouse wheel.** It scrolls the editor and never moves a slider. Use the slider, the arrows,
-  or type the value.
 - **HDR.** Tune the sliders with HDR on if you game with HDR on; what you see is what is saved.
 - **Flicker in Discord or Chrome** with a curve active is a known NVIDIA driver quirk with custom
   curves. Update the driver, or press Restore monitor while not gaming.
