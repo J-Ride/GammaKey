@@ -1,5 +1,7 @@
 namespace GammaKey.UI;
 
+using System.Globalization;
+
 // GammaKey.Color is a namespace, so the alias keeps Color meaning the drawing type here.
 using Color = System.Drawing.Color;
 
@@ -10,6 +12,17 @@ public sealed class GkNumber : Control
     private decimal _maximum = 100;
     private decimal _value;
     private int _hoverSpin; // 0 none, 1 up, -1 down
+    private decimal _valueBeforeEdit;
+
+    // A real TextBox gives caret, selection, clipboard and IME for free. It is hidden until
+    // the user clicks the text area or tabs in, so the painted look is unchanged at rest.
+    private readonly TextBox _editor = new()
+    {
+        BorderStyle = BorderStyle.None,
+        TextAlign = HorizontalAlignment.Center,
+        Visible = false,
+        TabStop = false,
+    };
 
     public event EventHandler? ValueChanged;
 
@@ -18,6 +31,9 @@ public sealed class GkNumber : Control
         SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.UserPaint | ControlStyles.Selectable, true);
         Size = new Size(72, 28);
         TabStop = true;
+        Controls.Add(_editor);
+        _editor.KeyDown += OnEditorKeyDown;
+        _editor.LostFocus += (_, _) => { if (IsEditing) CommitEdit(); };
     }
 
     public decimal Minimum { get => _minimum; set { _minimum = value; Value = _value; } }
@@ -41,6 +57,79 @@ public sealed class GkNumber : Control
     public string DisplayText => Format.Signed(_value, DecimalPlaces);
 
     public void Step(int direction) => Value = _value + direction * Increment;
+
+    public bool IsEditing => _editor.Visible;
+
+    public string EditText { get => _editor.Text; set => _editor.Text = value; }
+
+    public void BeginEdit()
+    {
+        if (!Enabled || IsEditing) return;
+        _valueBeforeEdit = _value;
+        _editor.Text = _value.ToString("F" + DecimalPlaces, CultureInfo.InvariantCulture);
+        PlaceEditor();
+        _editor.Visible = true;
+        _editor.Focus();
+        _editor.SelectAll();
+    }
+
+    // Unparseable text (empty, letters, a lone minus) keeps the old value. The setter clamps
+    // and fires ValueChanged only when the value actually moves.
+    public void CommitEdit()
+    {
+        if (!IsEditing) return;
+        if (decimal.TryParse(_editor.Text, NumberStyles.Number, CultureInfo.InvariantCulture, out var typed))
+            Value = Math.Round(typed, DecimalPlaces, MidpointRounding.AwayFromZero);
+        EndEdit();
+    }
+
+    public void CancelEdit()
+    {
+        if (!IsEditing) return;
+        Value = _valueBeforeEdit;
+        EndEdit();
+    }
+
+    private void EndEdit()
+    {
+        _editor.Visible = false;
+        Invalidate();
+    }
+
+    private void PlaceEditor()
+    {
+        var fonts = Theme.FontsFor(DeviceDpi);
+        _editor.Font = fonts.Mono;
+        _editor.BackColor = Theme.Surface;
+        _editor.ForeColor = Theme.TextPrimary;
+        int textWidth = SpinRect.Left - 2;
+        int top = Math.Max(1, (Height - _editor.PreferredHeight) / 2);
+        _editor.SetBounds(2, top, textWidth - 2, _editor.PreferredHeight);
+    }
+
+    private void OnEditorKeyDown(object? sender, KeyEventArgs e)
+    {
+        switch (e.KeyCode)
+        {
+            case Keys.Enter:
+                CommitEdit();
+                e.Handled = true; e.SuppressKeyPress = true;
+                break;
+            case Keys.Escape:
+                CancelEdit();
+                e.Handled = true; e.SuppressKeyPress = true;
+                break;
+            case Keys.Up:
+            case Keys.Down:
+                // Arrows apply at once, as they do outside edit mode, and the text follows.
+                Step(e.KeyCode == Keys.Up ? +1 : -1);
+                _valueBeforeEdit = _value;
+                _editor.Text = _value.ToString("F" + DecimalPlaces, CultureInfo.InvariantCulture);
+                _editor.SelectAll();
+                e.Handled = true; e.SuppressKeyPress = true;
+                break;
+        }
+    }
 
     private Rectangle SpinRect => new(Width - Theme.Scale(SpinWidth, DeviceDpi) - 1, 1, Theme.Scale(SpinWidth, DeviceDpi), Height - 2);
 
@@ -74,7 +163,8 @@ public sealed class GkNumber : Control
         }
 
         var textRect = new Rectangle(0, 0, spin.Left, Height);
-        TextRenderer.DrawText(g, DisplayText, Theme.FontsFor(DeviceDpi).Mono, textRect, Enabled ? Theme.TextPrimary : Theme.TextDim, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
+        if (!IsEditing)
+            TextRenderer.DrawText(g, DisplayText, Theme.FontsFor(DeviceDpi).Mono, textRect, Enabled ? Theme.TextPrimary : Theme.TextDim, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
     }
 
     private int SpinAt(Point p)
@@ -97,9 +187,9 @@ public sealed class GkNumber : Control
     {
         if (Enabled && e.Button == MouseButtons.Left)
         {
-            Focus();
             int s = SpinAt(e.Location);
-            if (s != 0) Step(s);
+            if (s != 0) { Focus(); Step(s); }
+            else BeginEdit();
         }
         base.OnMouseDown(e);
     }
@@ -113,7 +203,19 @@ public sealed class GkNumber : Control
         base.OnKeyDown(e);
     }
 
-    protected override void OnGotFocus(EventArgs e) { Invalidate(); base.OnGotFocus(e); }
+    protected override void OnGotFocus(EventArgs e)
+    {
+        Invalidate();
+        base.OnGotFocus(e);
+        // Tab lands here; a mouse click already called BeginEdit from OnMouseDown.
+        if (!IsEditing && MouseButtons == MouseButtons.None) BeginEdit();
+    }
+
+    protected override void OnResize(EventArgs e)
+    {
+        base.OnResize(e);
+        if (IsEditing) PlaceEditor();
+    }
     protected override void OnLostFocus(EventArgs e) { Invalidate(); base.OnLostFocus(e); }
     protected override void OnEnabledChanged(EventArgs e) { Invalidate(); base.OnEnabledChanged(e); }
 }
