@@ -43,7 +43,7 @@ public sealed class MainForm : Form
     private readonly GkSlider _blue = new() { Minimum = -100, Maximum = 100, Origin = 0 };
     private readonly GkSlider _shadowPivot = new() { Minimum = 0, Maximum = 100, Origin = 50, ScaleFormatter = v => v.ToString() };
     private readonly GkSlider _highlightPivot = new() { Minimum = 0, Maximum = 100, Origin = 50, ScaleFormatter = v => v.ToString() };
-    private readonly GkSlider _blackFloor =new() { Minimum = 0, Maximum = 100, Origin = 0, ScaleFormatter = v => v.ToString() };
+    private readonly GkSlider _blackFloor = new() { Minimum = 0, Maximum = 100, Origin = 0, ScaleFormatter = v => v.ToString() };
     private readonly Dictionary<GkSlider, GkNumber> _numbers = new();
     private readonly List<GkIconButton> _profileButtons = new();
 
