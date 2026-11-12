@@ -6,10 +6,12 @@ public static class CurveBuilder
 {
     public const int Size = 256;
 
-    // Shadows and highlights are limited to a quarter of full scale so their slope never
-    // cancels the base curve; combined with the running max below this keeps the table
-    // non-decreasing, which Windows requires.
-    private const double RegionStrength = 0.25;
+    // Shadows and Highlights are knees: every tone on one side of the pivot moves toward the
+    // pivot (slider toward the middle of the range) or away from it (slider toward the edge)
+    // by a constant factor. The factor stays positive, so each knee keeps the table
+    // non-decreasing on its own. At full cut the factor is a half, so with the pivot at zero
+    // the whole curve scales to 50 percent white: exactly the lowest top entry Windows accepts.
+    private const double KneeStrength = 0.5;
 
     // Each slider moves a channel by up to 30 percent; Temperature and the RGB slider for the
     // same channel can stack to 60 percent. The clamp is a guard on that sum. At 1.6 the top
@@ -28,8 +30,10 @@ public static class CurveBuilder
         var ramp = new ushort[Size * 3];
         double contrastFactor = (v.Contrast + 100) / 100.0;
         double brightnessShift = v.Brightness / 200.0;
-        double shadows = v.Shadows / 100.0 * RegionStrength;
-        double highlights = v.Highlights / 100.0 * RegionStrength;
+        double shadowPivot = v.ShadowPivot / 100.0;
+        double shadowFactor = 1.0 - v.Shadows / 100.0 * KneeStrength;
+        double highlightPivot = v.HighlightPivot / 100.0;
+        double highlightFactor = 1.0 + v.Highlights / 100.0 * KneeStrength;
 
         double[] gains =
         {
@@ -47,11 +51,8 @@ public static class CurveBuilder
             y = (y - 0.5) * contrastFactor + 0.5;
             y += brightnessShift;
 
-            double shadowWeight = Math.Clamp(1.0 - 2.0 * x, 0.0, 1.0);
-            y += shadows * shadowWeight * shadowWeight;
-
-            double highlightWeight = Math.Clamp(2.0 * x - 1.0, 0.0, 1.0);
-            y += highlights * highlightWeight * highlightWeight;
+            if (y < shadowPivot) y = shadowPivot - (shadowPivot - y) * shadowFactor;
+            if (y > highlightPivot) y = highlightPivot + (y - highlightPivot) * highlightFactor;
 
             for (int c = 0; c < 3; c++)
             {

@@ -70,14 +70,70 @@ public class CurveBuilderTests
         Assert.Equal((ushort)(60 * 257), ramp[60]);
     }
 
-    [Theory]
-    [InlineData(0.3, 100, 100, 100, 100)]
-    [InlineData(2.8, -100, -100, -100, -100)]
-    [InlineData(0.3, 0, 0, 100, 0)]
-    [InlineData(2.8, 0, -100, 0, 100)]
-    public void ExtremeValuesStayNonDecreasing(double gamma, int brightness, int contrast, int shadows, int highlights)
+    [Fact]
+    public void HighlightsAtFullCutPutWhiteAtThreeQuarters()
     {
-        var ramp = CurveBuilder.Build(new ColorValues(gamma, brightness, contrast, shadows, highlights, 50));
+        var ramp = CurveBuilder.Build(ColorValues.Normal with { Highlights = -100 });
+
+        Assert.InRange(ramp[255], 49151, 49152);
+        Assert.Equal((ushort)(64 * 257), ramp[64]);
+    }
+
+    [Fact]
+    public void HighlightsWithPivotAtZeroHalveTheWholeCurve()
+    {
+        var ramp = CurveBuilder.Build(ColorValues.Normal with { Highlights = -100, HighlightPivot = 0 });
+
+        for (int i = 0; i < 256; i++)
+            Assert.InRange(ramp[i], i * 257 / 2 - 1, i * 257 / 2 + 1);
+    }
+
+    [Fact]
+    public void HighlightsLeaveTonesBelowThePivotAlone()
+    {
+        var ramp = CurveBuilder.Build(ColorValues.Normal with { Highlights = 100, HighlightPivot = 75 });
+
+        for (int i = 0; i <= 191; i++)
+            Assert.Equal((ushort)(i * 257), ramp[i]);
+    }
+
+    [Fact]
+    public void ShadowsAtFullLiftPutBlackAtAQuarter()
+    {
+        var ramp = CurveBuilder.Build(ColorValues.Normal with { Shadows = 100 });
+
+        Assert.InRange(ramp[0], 16383, 16384);
+        Assert.Equal((ushort)(192 * 257), ramp[192]);
+    }
+
+    [Fact]
+    public void ShadowsLeaveTonesAboveThePivotAlone()
+    {
+        var ramp = CurveBuilder.Build(ColorValues.Normal with { Shadows = 100, ShadowPivot = 25 });
+
+        for (int i = 64; i < 256; i++)
+            Assert.Equal((ushort)(i * 257), ramp[i]);
+    }
+
+    [Fact]
+    public void ShadowPivotAtZeroMakesShadowsANoOp()
+    {
+        var ramp = CurveBuilder.Build(ColorValues.Normal with { Shadows = 100, ShadowPivot = 0 });
+
+        for (int i = 0; i < 256; i++)
+            Assert.Equal((ushort)(i * 257), ramp[i]);
+    }
+
+    [Theory]
+    [InlineData(0.3, 100, 100, 100, 100, 50, 50)]
+    [InlineData(2.8, -100, -100, -100, -100, 50, 50)]
+    [InlineData(0.3, 0, 0, 100, 0, 0, 100)]
+    [InlineData(2.8, 0, -100, 0, 100, 100, 0)]
+    [InlineData(1.0, -100, 100, 100, -100, 0, 0)]
+    [InlineData(1.0, 100, -100, -100, 100, 100, 100)]
+    public void ExtremeValuesStayNonDecreasing(double gamma, int brightness, int contrast, int shadows, int highlights, int shadowPivot, int highlightPivot)
+    {
+        var ramp = CurveBuilder.Build(new ColorValues(gamma, brightness, contrast, shadows, highlights, 50) { ShadowPivot = shadowPivot, HighlightPivot = highlightPivot });
 
         for (int i = 1; i < 256; i++)
             Assert.True(ramp[i] >= ramp[i - 1], $"entry {i} decreased");
@@ -152,7 +208,7 @@ public class CurveBuilderTests
     {
         var ramp = CurveBuilder.Build(ColorValues.Normal with { Green = -50 });
 
-        Assert.Equal((ushort)(128 * 257), ramp[128]);
+        Assert.Equal((ushort)(64 * 257), ramp[64]);
     }
 
     [Fact]
