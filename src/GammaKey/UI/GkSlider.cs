@@ -174,12 +174,6 @@ public sealed class GkSlider : Control
         base.OnKeyDown(e);
     }
 
-    protected override void OnMouseWheel(MouseEventArgs e)
-    {
-        Value += Math.Sign(e.Delta);
-        base.OnMouseWheel(e);
-    }
-
     protected override void OnEnabledChanged(EventArgs e)
     {
         base.OnEnabledChanged(e);

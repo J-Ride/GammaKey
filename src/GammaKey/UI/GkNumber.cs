@@ -104,8 +104,6 @@ public sealed class GkNumber : Control
         base.OnMouseDown(e);
     }
 
-    protected override void OnMouseWheel(MouseEventArgs e) { if (Enabled) Step(Math.Sign(e.Delta)); base.OnMouseWheel(e); }
-
     protected override bool IsInputKey(Keys keyData) => (keyData & Keys.KeyCode) is Keys.Up or Keys.Down || base.IsInputKey(keyData);
 
     protected override void OnKeyDown(KeyEventArgs e)
