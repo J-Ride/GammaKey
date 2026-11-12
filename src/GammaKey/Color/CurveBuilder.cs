@@ -6,9 +6,9 @@ public static class CurveBuilder
 {
     public const int Size = 256;
 
-    // Shadows and Highlights are knees: every tone on one side of the pivot moves toward the
-    // pivot (slider toward the middle of the range) or away from it (slider toward the edge)
-    // by a constant factor. The factor stays positive, so each knee keeps the table
+    // Shadows and Highlights are knees: every tone on one side of the pivot moves by a constant
+    // factor. Highlights down and Shadows up pull tones toward the pivot; the opposite direction
+    // pushes them away. The factor stays positive, so each knee keeps the table
     // non-decreasing on its own. At full cut the factor is a half, so with the pivot at zero
     // the whole curve scales to 50 percent white: exactly the lowest top entry Windows accepts.
     private const double KneeStrength = 0.5;
