@@ -19,6 +19,8 @@ public sealed class Profile
     public int Green { get; set; }
     public int Blue { get; set; }
     public int BlackFloor { get; set; }
+    public int ShadowPivot { get; set; } = 50;
+    public int HighlightPivot { get; set; } = 50;
 
     [JsonIgnore]
     public ColorValues Values
@@ -30,6 +32,8 @@ public sealed class Profile
             Green = Green,
             Blue = Blue,
             BlackFloor = BlackFloor,
+            ShadowPivot = ShadowPivot,
+            HighlightPivot = HighlightPivot,
         };
         set
         {
@@ -44,6 +48,8 @@ public sealed class Profile
             Green = value.Green;
             Blue = value.Blue;
             BlackFloor = value.BlackFloor;
+            ShadowPivot = value.ShadowPivot;
+            HighlightPivot = value.HighlightPivot;
         }
     }
 

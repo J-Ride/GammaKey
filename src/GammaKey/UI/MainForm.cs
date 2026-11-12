@@ -41,6 +41,8 @@ public sealed class MainForm : Form
     private readonly GkSlider _red = new() { Minimum = -100, Maximum = 100, Origin = 0 };
     private readonly GkSlider _green = new() { Minimum = -100, Maximum = 100, Origin = 0 };
     private readonly GkSlider _blue = new() { Minimum = -100, Maximum = 100, Origin = 0 };
+    private readonly GkSlider _shadowPivot = new() { Minimum = 0, Maximum = 100, Origin = 50, ScaleFormatter = v => v.ToString() };
+    private readonly GkSlider _highlightPivot = new() { Minimum = 0, Maximum = 100, Origin = 50, ScaleFormatter = v => v.ToString() };
     private readonly GkSlider _blackFloor = new() { Minimum = 0, Maximum = 100, Origin = 0, ScaleFormatter = v => v.ToString() };
     private readonly Dictionary<GkSlider, GkNumber> _numbers = new();
     private readonly List<GkIconButton> _profileButtons = new();
@@ -213,7 +215,10 @@ public sealed class MainForm : Form
         curveGroup.Content.Controls.Add(Slider("Brightness", _brightness));
         curveGroup.Content.Controls.Add(Slider("Contrast", _contrast));
         curveGroup.Content.Controls.Add(Slider("Shadows", _shadows));
+        curveGroup.Content.Controls.Add(Slider("Shadow pivot", _shadowPivot));
+        curveGroup.Content.Controls.Add(Slider("Black floor", _blackFloor));
         curveGroup.Content.Controls.Add(Slider("Highlights", _highlights));
+        curveGroup.Content.Controls.Add(Slider("Highlight pivot", _highlightPivot));
         editor.Controls.Add(curveGroup);
 
         var balanceGroup = new GkGroup("Balance", "GDI gamma ramp");
@@ -221,7 +226,6 @@ public sealed class MainForm : Form
         balanceGroup.Content.Controls.Add(Slider("Red", _red));
         balanceGroup.Content.Controls.Add(Slider("Green", _green));
         balanceGroup.Content.Controls.Add(Slider("Blue", _blue));
-        balanceGroup.Content.Controls.Add(Slider("Black floor", _blackFloor));
         editor.Controls.Add(balanceGroup);
 
         var colorGroup = new GkGroup("Color", "NVIDIA only");
@@ -471,6 +475,8 @@ public sealed class MainForm : Form
         _green.Value = v.Green;
         _blue.Value = v.Blue;
         _blackFloor.Value = v.BlackFloor;
+        _shadowPivot.Value = v.ShadowPivot;
+        _highlightPivot.Value = v.HighlightPivot;
         foreach (var (bar, number) in _numbers)
             number.Value = ReferenceEquals(bar, _gamma) ? bar.Value / 100m : bar.Value;
         _loading = false;
@@ -537,6 +543,8 @@ public sealed class MainForm : Form
         Green = _green.Value,
         Blue = _blue.Value,
         BlackFloor = _blackFloor.Value,
+        ShadowPivot = _shadowPivot.Value,
+        HighlightPivot = _highlightPivot.Value,
     };
 
     private void PushValuesToProfileAndPreview()

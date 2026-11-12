@@ -21,6 +21,11 @@ public sealed record ColorValues(
     public int Blue { get; init; }
     public int BlackFloor { get; init; }
 
+    // Where Shadows and Highlights start to act, as a percent of full scale. 50 is mid-grey,
+    // which is where the old fixed-shape sliders began, so an old file reads the same.
+    public int ShadowPivot { get; init; } = 50;
+    public int HighlightPivot { get; init; } = 50;
+
     public static readonly ColorValues Normal = new(1.0, 0, 0, 0, 0, VibranceMin);
 
     public ColorValues Clamped() => this with
@@ -36,5 +41,7 @@ public sealed record ColorValues(
         Green = Math.Clamp(Green, -100, 100),
         Blue = Math.Clamp(Blue, -100, 100),
         BlackFloor = Math.Clamp(BlackFloor, 0, 100),
+        ShadowPivot = Math.Clamp(ShadowPivot, 0, 100),
+        HighlightPivot = Math.Clamp(HighlightPivot, 0, 100),
     };
 }

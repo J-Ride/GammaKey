@@ -44,4 +44,187 @@ public class GkNumberTests
 
         Assert.Equal("+24", n.DisplayText);
     }
+
+    [Fact]
+    public void TypedValueCommitsOnce()
+    {
+        var n = new GkNumber { Minimum = -100, Maximum = 100, Value = 10 };
+        int fired = 0;
+        n.ValueChanged += (_, _) => fired++;
+
+        n.BeginEdit();
+        n.EditText = "65";
+        n.CommitEdit();
+
+        Assert.Equal(65m, n.Value);
+        Assert.Equal(1, fired);
+        Assert.False(n.IsEditing);
+    }
+
+    [Fact]
+    public void TypedValueAboveMaximumClamps()
+    {
+        var n = new GkNumber { Minimum = -100, Maximum = 100, Value = 10 };
+
+        n.BeginEdit();
+        n.EditText = "999";
+        n.CommitEdit();
+
+        Assert.Equal(100m, n.Value);
+    }
+
+    [Fact]
+    public void CancelKeepsTheOldValueAndFiresNothing()
+    {
+        var n = new GkNumber { Minimum = -100, Maximum = 100, Value = 10 };
+        int fired = 0;
+        n.ValueChanged += (_, _) => fired++;
+
+        n.BeginEdit();
+        n.EditText = "65";
+        n.CancelEdit();
+
+        Assert.Equal(10m, n.Value);
+        Assert.Equal(0, fired);
+        Assert.False(n.IsEditing);
+    }
+
+    [Fact]
+    public void UnparseableTextKeepsTheOldValue()
+    {
+        var n = new GkNumber { Minimum = -100, Maximum = 100, Value = 10 };
+        int fired = 0;
+        n.ValueChanged += (_, _) => fired++;
+
+        n.BeginEdit();
+        n.EditText = "abc";
+        n.CommitEdit();
+
+        Assert.Equal(10m, n.Value);
+        Assert.Equal(0, fired);
+    }
+
+    [Fact]
+    public void GammaBoxAcceptsTwoDecimals()
+    {
+        var n = new GkNumber { Minimum = 0.3m, Maximum = 2.8m, Increment = 0.01m, DecimalPlaces = 2, Value = 1m };
+
+        n.BeginEdit();
+        n.EditText = "1.25";
+        n.CommitEdit();
+
+        Assert.Equal(1.25m, n.Value);
+    }
+
+    [Fact]
+    public void IntegerBoxRoundsATypedDecimal()
+    {
+        var n = new GkNumber { Minimum = -100, Maximum = 100, Value = 0 };
+
+        n.BeginEdit();
+        n.EditText = "12.7";
+        n.CommitEdit();
+
+        Assert.Equal(13m, n.Value);
+    }
+
+    [Fact]
+    public void TypingDoesNotChangeTheValueUntilCommit()
+    {
+        var n = new GkNumber { Minimum = -100, Maximum = 100, Value = 10 };
+
+        n.BeginEdit();
+        n.EditText = "65";
+
+        Assert.Equal(10m, n.Value);
+        Assert.True(n.IsEditing);
+    }
+
+    [Fact]
+    public void BeginEditShowsThePlainValue()
+    {
+        var n = new GkNumber { Minimum = -100, Maximum = 100, Value = 24 };
+
+        n.BeginEdit();
+
+        Assert.Equal("24", n.EditText);
+    }
+
+    [Fact]
+    public void CommaTextKeepsTheOldValue()
+    {
+        var n = new GkNumber { Minimum = 0.3m, Maximum = 2.8m, Increment = 0.01m, DecimalPlaces = 2, Value = 1m };
+
+        n.BeginEdit();
+        n.EditText = "1,25";
+        n.CommitEdit();
+
+        Assert.Equal(1m, n.Value);
+    }
+
+    // A window handle is what makes hiding the editor move focus, so these host the box on a shown form.
+    private static (Form Form, GkNumber Box, GkNumber Next) ShowTwoBoxes()
+    {
+        var form = new Form { ShowInTaskbar = false };
+        var box = new GkNumber { Minimum = -100, Maximum = 100, Value = 10, TabIndex = 0 };
+        var next = new GkNumber { Minimum = -100, Maximum = 100, Value = 20, TabIndex = 1, Top = 40 };
+        form.Controls.Add(box);
+        form.Controls.Add(next);
+        form.Show();
+        return (form, box, next);
+    }
+
+    [Fact]
+    public void EscapeRestoresTheOldValueWhenTheBoxHasAWindow()
+    {
+        var (form, box, _) = ShowTwoBoxes();
+        using var _form = form;
+
+        box.BeginEdit();
+        box.EditText = "65";
+        box.CancelEdit();
+
+        Assert.Equal(10m, box.Value);
+    }
+
+    [Fact]
+    public void EscapeFiresNothingWhenTheBoxHasAWindow()
+    {
+        var (form, box, _) = ShowTwoBoxes();
+        using var _form = form;
+        int fired = 0;
+        box.ValueChanged += (_, _) => fired++;
+
+        box.BeginEdit();
+        box.EditText = "65";
+        box.CancelEdit();
+
+        Assert.Equal(0, fired);
+    }
+
+    [Fact]
+    public void CommitWithAWindowDoesNotOpenTheNextBox()
+    {
+        var (form, box, next) = ShowTwoBoxes();
+        using var _form = form;
+
+        box.BeginEdit();
+        box.EditText = "40";
+        box.CommitEdit();
+
+        Assert.False(next.IsEditing);
+    }
+
+    [Fact]
+    public void CommitWithAWindowKeepsTheTypedValue()
+    {
+        var (form, box, _) = ShowTwoBoxes();
+        using var _form = form;
+
+        box.BeginEdit();
+        box.EditText = "40";
+        box.CommitEdit();
+
+        Assert.Equal(40m, box.Value);
+    }
 }

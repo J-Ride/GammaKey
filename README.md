@@ -1,4 +1,4 @@
-﻿# GammaKey
+# GammaKey
 
 Hotkey profiles for your monitor's picture on Windows. Save gamma, brightness, contrast, shadows,
 highlights, colour balance and NVIDIA vibrance as named profiles and switch between them with a
@@ -52,7 +52,8 @@ runtime.
 
 1. Click **+** in the left rail, or pick one of the three starter profiles (Dark Room, Bright
    Outdoors, Normal).
-2. Drag the sliders. The screen updates as you drag.
+2. Drag the sliders, use the up and down arrows, or click the number box and type a value
+   then press Enter. The screen updates as you go. Escape in a number box puts the old value back.
 3. Click the **Hotkey** box and press a key combination. Backspace clears it.
 4. Pick which **Monitors** the profile applies to.
 5. Click **Apply** to save. **Revert** drops your edits and reloads the saved profile.
@@ -89,15 +90,38 @@ tray menu.
 |---|---|---|
 | Curve | Gamma | 0.30 to 2.80, 1.00 is normal |
 | Curve | Brightness, Contrast, Shadows, Highlights | -100 to +100 |
+| Curve | Shadow pivot, Highlight pivot | 0 to 100, 50 is normal |
+| Curve | Black floor | 0 to 100 |
 | Balance | Warm/cool, Red, Green, Blue | -100 to +100 |
-| Balance | Black floor | 0 to 100 |
 | Color | Vibrance (NVIDIA only) | 50 to 100, 50 is normal |
+
+Shadows lifts or crushes everything darker than its pivot; Highlights dims or boosts everything
+brighter than its pivot. Move a pivot to change how much of the picture its slider touches: a
+Shadow pivot at 25 lifts only the darkest quarter, a Highlight pivot at 0 scales the whole
+picture down, which caps how white white can be. Black floor sets the darkest level the screen
+shows. Windows refuses a table whose white falls below half, which is where Highlights -100 with
+the pivot at 0 lands.
 
 Curve and Balance change the colour table the graphics card applies to the whole screen. Vibrance
 is set in the NVIDIA driver and survives alt-tab.
 
 If you push the sliders far enough, Windows refuses the curve. The status line says "Windows
 refused this curve, reduce the sliders" and the previous picture stays.
+
+### Shadows, Highlights and their pivots
+
+Shadows acts on everything darker than its pivot; Highlights acts on everything brighter than
+its pivot. A pivot at 50 is mid-grey. Move a pivot to control how much of the picture the slider
+touches.
+
+- Dark map, want to see into corners without washing out the rest: Shadows +60, Shadow pivot 25.
+  Only the darkest quarter lifts. Raise Black floor if black still looks crushed.
+- Bright map, sky and sunlit ground glare: Highlights -60, Highlight pivot 50. The whole bright
+  half comes down and the dark half stays put.
+- Want nothing on screen to be truly white: Highlight pivot 0 and Highlights down. The whole
+  picture scales toward grey; at -100 white sits at half, the lowest Windows allows.
+
+Shadow pivot at 0 switches Shadows off; Highlight pivot at 100 switches Highlights off.
 
 ### Tray menu
 
@@ -146,6 +170,8 @@ arrive with the hotkey cleared.
 
 ## Notes
 
+- **Mouse wheel.** It scrolls the editor and never moves a slider. Use the slider, the arrows,
+  or type the value.
 - **HDR.** Tune the sliders with HDR on if you game with HDR on; what you see is what is saved.
 - **Flicker in Discord or Chrome** with a curve active is a known NVIDIA driver quirk with custom
   curves. Update the driver, or press Restore monitor while not gaming.

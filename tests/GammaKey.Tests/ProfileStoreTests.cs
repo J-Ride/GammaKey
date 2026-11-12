@@ -248,4 +248,50 @@ public class ProfileStoreTests : IDisposable
 
         Assert.Equal(ColorValues.Normal with { Temperature = 30, Red = -10, Green = 5, Blue = 20, BlackFloor = 40 }, p.Values);
     }
+
+    [Fact]
+    public void FileWithoutPivotsLoadsThemAtTheMiddle()
+    {
+        var path = PathFor("profiles.json");
+        File.WriteAllText(path, """
+            { "version": 1, "profiles": [ { "name": "Old", "gamma": 1.2, "brightness": 5, "contrast": 0, "shadows": 40, "highlights": -20, "vibrance": 50 } ] }
+            """);
+        var store = new ProfileStore(path);
+
+        var p = Assert.Single(store.Load().Profiles);
+
+        Assert.Equal(50, p.ShadowPivot);
+        Assert.Equal(50, p.HighlightPivot);
+    }
+
+    [Fact]
+    public void OutOfRangePivotsAreClampedOnLoad()
+    {
+        var path = PathFor("profiles.json");
+        File.WriteAllText(path, """
+            { "version": 1, "profiles": [ { "name": "Wild", "shadowPivot": 150, "highlightPivot": -5 } ] }
+            """);
+        var store = new ProfileStore(path);
+
+        var p = Assert.Single(store.Load().Profiles);
+
+        Assert.Equal(100, p.ShadowPivot);
+        Assert.Equal(0, p.HighlightPivot);
+    }
+
+    [Fact]
+    public void PivotsRoundTripThroughSave()
+    {
+        var path = PathFor("profiles.json");
+        var store = new ProfileStore(path);
+        var settings = store.Load();
+        settings.Profiles[0].ShadowPivot = 30;
+        settings.Profiles[0].HighlightPivot = 70;
+        store.Save(settings);
+
+        var reloaded = new ProfileStore(path).Load();
+
+        Assert.Equal(30, reloaded.Profiles[0].ShadowPivot);
+        Assert.Equal(70, reloaded.Profiles[0].HighlightPivot);
+    }
 }

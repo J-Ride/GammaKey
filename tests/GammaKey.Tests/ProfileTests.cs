@@ -137,4 +137,33 @@ public class ProfileTests
 
         Assert.Equal((saved.Id, "Cave 2", "Alt+F1", MonitorTarget.All, ColorValues.Normal), (edited.Id, saved.Name, saved.Hotkey, saved.Target.Mode, saved.Values));
     }
+
+    [Fact]
+    public void PivotsDefaultToTheMiddle()
+    {
+        var p = new Profile();
+
+        Assert.Equal(50, p.Values.ShadowPivot);
+        Assert.Equal(50, p.Values.HighlightPivot);
+    }
+
+    [Fact]
+    public void ValuesSetterCarriesThePivots()
+    {
+        var p = new Profile();
+
+        p.Values = ColorValues.Normal with { ShadowPivot = 20, HighlightPivot = 80 };
+
+        Assert.Equal(20, p.ShadowPivot);
+        Assert.Equal(80, p.HighlightPivot);
+    }
+
+    [Fact]
+    public void ClampedLimitsThePivots()
+    {
+        var v = (ColorValues.Normal with { ShadowPivot = -5, HighlightPivot = 150 }).Clamped();
+
+        Assert.Equal(0, v.ShadowPivot);
+        Assert.Equal(100, v.HighlightPivot);
+    }
 }
