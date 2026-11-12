@@ -46,6 +46,7 @@ public sealed class MainForm : Form
     private readonly GkSlider _blackFloor = new() { Minimum = 0, Maximum = 100, Origin = 0, ScaleFormatter = v => v.ToString() };
     private readonly Dictionary<GkSlider, GkNumber> _numbers = new();
     private readonly List<GkIconButton> _profileButtons = new();
+    private readonly GkTooltip _tips = new();
 
     // _saved is the profile inside Settings.Profiles; _editing is its working copy. Edits and
     // previews touch _editing only, so Revert is a fresh copy and nothing is written until Apply.
@@ -211,25 +212,25 @@ public sealed class MainForm : Form
         editor.Controls.Add(profileGroup);
 
         var curveGroup = new GkGroup("Curve", "GDI gamma ramp");
-        curveGroup.Content.Controls.Add(Slider("Gamma", _gamma, isGamma: true));
-        curveGroup.Content.Controls.Add(Slider("Brightness", _brightness));
-        curveGroup.Content.Controls.Add(Slider("Contrast", _contrast));
-        curveGroup.Content.Controls.Add(Slider("Shadows", _shadows));
-        curveGroup.Content.Controls.Add(Slider("Shadow pivot", _shadowPivot));
-        curveGroup.Content.Controls.Add(Slider("Black floor", _blackFloor));
-        curveGroup.Content.Controls.Add(Slider("Highlights", _highlights));
-        curveGroup.Content.Controls.Add(Slider("Highlight pivot", _highlightPivot));
+        curveGroup.Content.Controls.Add(Slider("Gamma", _gamma, "Overall brightness curve. Below 1.0 darkens mid-tones, above 1.0 lifts them.", isGamma: true));
+        curveGroup.Content.Controls.Add(Slider("Brightness", _brightness, "Shifts every tone lighter or darker by the same amount."));
+        curveGroup.Content.Controls.Add(Slider("Contrast", _contrast, "Pushes darks darker and brights brighter around the middle."));
+        curveGroup.Content.Controls.Add(Slider("Shadows", _shadows, "Lifts or lowers only the tones darker than the Shadow pivot."));
+        curveGroup.Content.Controls.Add(Slider("Shadow pivot", _shadowPivot, "Sets the cut-off. Everything darker than this counts as shadow."));
+        curveGroup.Content.Controls.Add(Slider("Black floor", _blackFloor, "Raises the darkest black so nothing is fully crushed."));
+        curveGroup.Content.Controls.Add(Slider("Highlights", _highlights, "Brightens or dims only the tones brighter than the Highlight pivot."));
+        curveGroup.Content.Controls.Add(Slider("Highlight pivot", _highlightPivot, "Sets the cut-off. Everything brighter than this counts as highlight."));
         editor.Controls.Add(curveGroup);
 
         var balanceGroup = new GkGroup("Balance", "GDI gamma ramp");
-        balanceGroup.Content.Controls.Add(Slider("Warm/cool", _temperature));
-        balanceGroup.Content.Controls.Add(Slider("Red", _red));
-        balanceGroup.Content.Controls.Add(Slider("Green", _green));
-        balanceGroup.Content.Controls.Add(Slider("Blue", _blue));
+        balanceGroup.Content.Controls.Add(Slider("Warm/cool", _temperature, "Tints the whole screen towards orange or blue."));
+        balanceGroup.Content.Controls.Add(Slider("Red", _red, "Adds or removes red across the whole screen."));
+        balanceGroup.Content.Controls.Add(Slider("Green", _green, "Adds or removes green across the whole screen."));
+        balanceGroup.Content.Controls.Add(Slider("Blue", _blue, "Adds or removes blue across the whole screen."));
         editor.Controls.Add(balanceGroup);
 
         var colorGroup = new GkGroup("Color", "NVIDIA only");
-        colorGroup.Content.Controls.Add(Slider("Vibrance", _vibrance));
+        colorGroup.Content.Controls.Add(Slider("Vibrance", _vibrance, "Boosts colour strength in the NVIDIA driver."));
         colorGroup.Content.Controls.Add(_vibranceNote);
         editor.Controls.Add(colorGroup);
 
@@ -269,10 +270,17 @@ public sealed class MainForm : Form
         }
     }
 
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing) _tips.Dispose();
+        base.Dispose(disposing);
+    }
+
     private GkIconButton IconButton(GkIcon icon, string name, EventHandler onClick, bool isPrimary = false, bool isDanger = false)
     {
         var b = new GkIconButton(icon, name) { IsPrimary = isPrimary, IsDanger = isDanger, Anchor = AnchorStyles.None, Margin = Padding.Empty };
         b.Click += onClick;
+        _tips.Attach(b, name);
         _profileButtons.Add(b);
         return b;
     }
@@ -301,7 +309,7 @@ public sealed class MainForm : Form
         return panel;
     }
 
-    private TableLayoutPanel Slider(string label, GkSlider bar, bool isGamma = false)
+    private TableLayoutPanel Slider(string label, GkSlider bar, string help, bool isGamma = false)
     {
         var number = new GkNumber
         {
@@ -341,6 +349,9 @@ public sealed class MainForm : Form
         number.Anchor = AnchorStyles.Right | AnchorStyles.Top;
         number.Margin = new Padding(Theme.Space3, 0, 0, 0);
         panel.Controls.Add(number, 2, 0);
+        _tips.Attach(text, help);
+        _tips.Attach(bar, help);
+        _tips.Attach(number, help);
         return panel;
     }
 
