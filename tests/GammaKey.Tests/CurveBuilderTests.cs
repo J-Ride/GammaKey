@@ -208,7 +208,7 @@ public class CurveBuilderTests
     {
         var ramp = CurveBuilder.Build(ColorValues.Normal with { Green = -50 });
 
-        Assert.Equal((ushort)(64 * 257), ramp[64]);
+        Assert.Equal((ushort)(128 * 257), ramp[128]);
     }
 
     [Fact]
