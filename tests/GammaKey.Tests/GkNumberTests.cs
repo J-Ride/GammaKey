@@ -149,4 +149,82 @@ public class GkNumberTests
 
         Assert.Equal("24", n.EditText);
     }
+
+    [Fact]
+    public void CommaTextKeepsTheOldValue()
+    {
+        var n = new GkNumber { Minimum = 0.3m, Maximum = 2.8m, Increment = 0.01m, DecimalPlaces = 2, Value = 1m };
+
+        n.BeginEdit();
+        n.EditText = "1,25";
+        n.CommitEdit();
+
+        Assert.Equal(1m, n.Value);
+    }
+
+    // A window handle is what makes hiding the editor move focus, so these host the box on a shown form.
+    private static (Form Form, GkNumber Box, GkNumber Next) ShowTwoBoxes()
+    {
+        var form = new Form { ShowInTaskbar = false };
+        var box = new GkNumber { Minimum = -100, Maximum = 100, Value = 10, TabIndex = 0 };
+        var next = new GkNumber { Minimum = -100, Maximum = 100, Value = 20, TabIndex = 1, Top = 40 };
+        form.Controls.Add(box);
+        form.Controls.Add(next);
+        form.Show();
+        return (form, box, next);
+    }
+
+    [Fact]
+    public void EscapeRestoresTheOldValueWhenTheBoxHasAWindow()
+    {
+        var (form, box, _) = ShowTwoBoxes();
+        using var _form = form;
+
+        box.BeginEdit();
+        box.EditText = "65";
+        box.CancelEdit();
+
+        Assert.Equal(10m, box.Value);
+    }
+
+    [Fact]
+    public void EscapeFiresNothingWhenTheBoxHasAWindow()
+    {
+        var (form, box, _) = ShowTwoBoxes();
+        using var _form = form;
+        int fired = 0;
+        box.ValueChanged += (_, _) => fired++;
+
+        box.BeginEdit();
+        box.EditText = "65";
+        box.CancelEdit();
+
+        Assert.Equal(0, fired);
+    }
+
+    [Fact]
+    public void CommitWithAWindowDoesNotOpenTheNextBox()
+    {
+        var (form, box, next) = ShowTwoBoxes();
+        using var _form = form;
+
+        box.BeginEdit();
+        box.EditText = "40";
+        box.CommitEdit();
+
+        Assert.False(next.IsEditing);
+    }
+
+    [Fact]
+    public void CommitWithAWindowKeepsTheTypedValue()
+    {
+        var (form, box, _) = ShowTwoBoxes();
+        using var _form = form;
+
+        box.BeginEdit();
+        box.EditText = "40";
+        box.CommitEdit();
+
+        Assert.Equal(40m, box.Value);
+    }
 }

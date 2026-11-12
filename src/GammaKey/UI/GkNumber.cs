@@ -14,6 +14,13 @@ public sealed class GkNumber : Control
     private int _hoverSpin; // 0 none, 1 up, -1 down
     private decimal _valueBeforeEdit;
 
+    // A flag, not _editor.Visible: hiding the editor moves focus first, and its LostFocus
+    // would otherwise see Visible still true and commit the text an Escape meant to drop.
+    private bool _editing;
+
+    // EndEdit hands focus back to this box; that must not reopen edit mode in OnGotFocus.
+    private bool _suppressAutoEdit;
+
     // A real TextBox gives caret, selection, clipboard and IME for free. It is hidden until
     // the user clicks the text area or tabs in, so the painted look is unchanged at rest.
     private readonly TextBox _editor = new()
@@ -33,7 +40,8 @@ public sealed class GkNumber : Control
         TabStop = true;
         Controls.Add(_editor);
         _editor.KeyDown += OnEditorKeyDown;
-        _editor.LostFocus += (_, _) => { if (IsEditing) CommitEdit(); };
+        _editor.LostFocus += (_, _) => { if (_editing) CommitEdit(); Invalidate(); };
+        _editor.GotFocus += (_, _) => Invalidate();
     }
 
     public decimal Minimum { get => _minimum; set { _minimum = value; Value = _value; } }
@@ -58,13 +66,14 @@ public sealed class GkNumber : Control
 
     public void Step(int direction) => Value = _value + direction * Increment;
 
-    public bool IsEditing => _editor.Visible;
+    public bool IsEditing => _editing;
 
     public string EditText { get => _editor.Text; set => _editor.Text = value; }
 
     public void BeginEdit()
     {
-        if (!Enabled || IsEditing) return;
+        if (!Enabled || _editing) return;
+        _editing = true;
         _valueBeforeEdit = _value;
         _editor.Text = _value.ToString("F" + DecimalPlaces, CultureInfo.InvariantCulture);
         PlaceEditor();
@@ -78,7 +87,7 @@ public sealed class GkNumber : Control
     public void CommitEdit()
     {
         if (!IsEditing) return;
-        if (decimal.TryParse(_editor.Text, NumberStyles.Number, CultureInfo.InvariantCulture, out var typed))
+        if (decimal.TryParse(_editor.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var typed))
             Value = Math.Round(typed, DecimalPlaces, MidpointRounding.AwayFromZero);
         EndEdit();
     }
@@ -92,6 +101,16 @@ public sealed class GkNumber : Control
 
     private void EndEdit()
     {
+        _editing = false;
+        // Hiding a focused editor makes WinForms jump focus to the next control, which would
+        // open edit mode there. Taking focus back first keeps it on this box. When the edit
+        // ends because focus already left, the editor is no longer focused and focus stays put.
+        if (_editor.Focused)
+        {
+            _suppressAutoEdit = true;
+            try { Focus(); }
+            finally { _suppressAutoEdit = false; }
+        }
         _editor.Visible = false;
         Invalidate();
     }
@@ -140,7 +159,7 @@ public sealed class GkNumber : Control
         g.Clear(Parent?.BackColor ?? Theme.Panel);
         var r = new Rectangle(0, 0, Width - 1, Height - 1);
         using (var b = new SolidBrush(Theme.Surface)) Theme.FillRounded(g, b, r, Theme.Radius);
-        using (var p = new Pen(Focused ? Theme.Accent : Theme.Line)) Theme.DrawRounded(g, p, r, Theme.Radius);
+        using (var p = new Pen(ContainsFocus ? Theme.Accent : Theme.Line)) Theme.DrawRounded(g, p, r, Theme.Radius);
 
         var spin = SpinRect;
         using (var divider = new Pen(Theme.Line)) g.DrawLine(divider, spin.Left, 1, spin.Left, Height - 2);
@@ -188,10 +207,28 @@ public sealed class GkNumber : Control
         if (Enabled && e.Button == MouseButtons.Left)
         {
             int s = SpinAt(e.Location);
-            if (s != 0) { Focus(); Step(s); }
+            if (s != 0)
+            {
+                CommitEdit();
+                Focus();
+                Step(s);
+            }
             else BeginEdit();
         }
         base.OnMouseDown(e);
+    }
+
+    // Tab never reaches the editor's KeyDown; it arrives here as a dialog key. Plain Tab already
+    // leaves for the next box, but Shift+Tab would land on this box and reopen edit mode.
+    protected override bool ProcessDialogKey(Keys keyData)
+    {
+        if (_editing && keyData == (Keys.Tab | Keys.Shift))
+        {
+            CommitEdit();
+            Parent?.SelectNextControl(this, forward: false, tabStopOnly: true, nested: true, wrap: true);
+            return true;
+        }
+        return base.ProcessDialogKey(keyData);
     }
 
     protected override bool IsInputKey(Keys keyData) => (keyData & Keys.KeyCode) is Keys.Up or Keys.Down || base.IsInputKey(keyData);
@@ -208,7 +245,7 @@ public sealed class GkNumber : Control
         Invalidate();
         base.OnGotFocus(e);
         // Tab lands here; a mouse click already called BeginEdit from OnMouseDown.
-        if (!IsEditing && MouseButtons == MouseButtons.None) BeginEdit();
+        if (!_editing && !_suppressAutoEdit && MouseButtons == MouseButtons.None) BeginEdit();
     }
 
     protected override void OnResize(EventArgs e)
